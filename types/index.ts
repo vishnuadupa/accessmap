@@ -162,6 +162,7 @@ export interface SavedFavorite {
   parking_type: ParkingSpot["parking_type"];
   opening_hours: string | null;
   report_flags: number;
+  address: string | null;
   saved_at: Date;
 }
 

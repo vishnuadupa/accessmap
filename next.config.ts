@@ -23,7 +23,7 @@ const securityHeaders = [
       "script-src 'self' 'unsafe-eval'", // unsafe-eval needed by Leaflet in dev
       "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com", // Leaflet uses inline styles
       "font-src 'self' https://fonts.gstatic.com",
-      "img-src 'self' data: https://*.tile.openstreetmap.org https://*.openstreetmap.org",
+      "img-src 'self' data: https://*.tile.openstreetmap.org https://*.openstreetmap.org https://*.basemaps.cartocdn.com https://unpkg.com",
       "connect-src 'self'", // all external calls are server-side only
       "frame-ancestors 'none'",
     ].join("; "),

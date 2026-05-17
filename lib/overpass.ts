@@ -14,13 +14,17 @@ const OVERPASS_ENDPOINTS = [
 ];
 
 function buildQuery(lat: number, lon: number, radius: number): string {
-  // Query both confirmed wheelchair spots AND spots with disabled capacity
-  // Falls back to all parking if neither tag exists (flagged as unknown)
+  // Query wheelchair spots, disabled-capacity spots, AND van-accessible spots.
+  // van:accessible and capacity:disabled:motorcar are the OSM tags for spots
+  // with 132"+ aisle clearance required by ramp-equipped vans — not surfaced
+  // by Apple Maps or Google Maps, which lump all accessible spots together.
   return `[out:json][timeout:25];
 (
   nwr["amenity"="parking"]["wheelchair"="yes"](around:${radius},${lat},${lon});
   nwr["amenity"="parking"]["wheelchair"="limited"](around:${radius},${lat},${lon});
   nwr["amenity"="parking"]["capacity:disabled"~"^[1-9][0-9]*$"](around:${radius},${lat},${lon});
+  nwr["amenity"="parking"]["capacity:disabled:motorcar"~"^[1-9][0-9]*$"](around:${radius},${lat},${lon});
+  nwr["amenity"="parking"]["motorcar:disabled"="yes"](around:${radius},${lat},${lon});
 );
 out center ${Math.min(30, Math.ceil(radius / 20))};`;
 }
@@ -31,6 +35,21 @@ function buildFallbackQuery(lat: number, lon: number, radius: number): string {
 nwr["amenity"="parking"](around:${radius},${lat},${lon});
 out center 20;`;
 }
+
+function parseVanAccessible(tags: Record<string, string>): boolean | null {
+  // Explicit van_accessible tag (custom but used in some regions)
+  if (tags["van_accessible"] === "yes") return true;
+  if (tags["van_accessible"] === "no") return false;
+  // motorcar:disabled=yes signals van/motorized wheelchair accessible spot
+  if (tags["motorcar:disabled"] === "yes") return true;
+  // capacity:disabled:motorcar > 0 means at least one van-accessible space
+  const vanCap = parseInt(tags["capacity:disabled:motorcar"] ?? "", 10);
+  if (!isNaN(vanCap) && vanCap > 0 && vanCap < 10000) return true;
+  return null;
+}
+
+// Validate OSM check_date:wheelchair values (format: YYYY, YYYY-MM, or YYYY-MM-DD)
+const CHECK_DATE_RE = /^\d{4}(-\d{2}(-\d{2})?)?$/;
 
 function parseTag(tags: Record<string, string>): Partial<ParkingSpot> {
   const fee = tags["fee"];
@@ -44,11 +63,20 @@ function parseTag(tags: Record<string, string>): Partial<ParkingSpot> {
 
   const capacityRaw = parseInt(tags["capacity:disabled"] ?? "", 10);
 
+  // check_date:wheelchair = when a human last verified accessibility on the ground.
+  // No major mapping app surfaces this — it's our key differentiator.
+  const rawCheckDate = tags["check_date:wheelchair"] ?? tags["check_date"] ?? null;
+  const check_date_wheelchair =
+    rawCheckDate && CHECK_DATE_RE.test(rawCheckDate) ? rawCheckDate : null;
+
   return {
     name: safeName,
     wheelchair: (["yes", "limited", "no"].includes(tags["wheelchair"])
       ? tags["wheelchair"]
       : "unknown") as ParkingSpot["wheelchair"],
+    van_accessible: parseVanAccessible(tags),
+    check_date_wheelchair,
+    verified_at: null,
     capacity_disabled:
       !isNaN(capacityRaw) && capacityRaw > 0 && capacityRaw < 10000
         ? capacityRaw

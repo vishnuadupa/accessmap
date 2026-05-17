@@ -15,6 +15,13 @@ export interface ParkingSpot {
   loc: GeoPoint;
   wheelchair: WheelchairStatus;
   capacity_disabled: number | null;
+  // van_accessible: true = 132"+ aisle/rear access for ramp-equipped vans
+  // false = standard 96" accessible only, null = unknown
+  van_accessible: boolean | null;
+  // ISO date string from OSM check_date:wheelchair tag (e.g. "2024-03")
+  check_date_wheelchair: string | null;
+  // Last time a user confirmed/denied accessibility via crowd report
+  verified_at: Date | null;
   surface: string | null;
   fee: boolean | null;
   covered: boolean | null;
@@ -94,7 +101,7 @@ export interface FavoriteRequest {
 export interface ReportRequest {
   session_id: string;
   spot_id: string;
-  status: "blocked" | "damaged" | "not_accessible" | "confirmed_ok";
+  status: "blocked" | "damaged" | "not_accessible" | "confirmed_ok" | "still_accessible" | "no_longer_accessible";
   note?: string;
 }
 

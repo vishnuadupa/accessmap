@@ -18,7 +18,14 @@ function getHashedIp(req: NextRequest): string {
 const ReportSchema = z.object({
   session_id: z.string().uuid(),
   spot_id: z.string().min(1).max(50).regex(/^[0-9a-zA-Z_-]+$/),
-  status: z.enum(["blocked", "damaged", "not_accessible", "confirmed_ok"]),
+  status: z.enum([
+    "blocked",
+    "damaged",
+    "not_accessible",
+    "confirmed_ok",
+    "still_accessible",      // crowd-verification: spot is still accessible
+    "no_longer_accessible",  // crowd-verification: accessibility has changed
+  ]),
   note: z.string().max(200).optional(),
 });
 
@@ -78,12 +85,24 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       created_at: new Date(),
     });
 
+    const now = new Date();
+
+    // Crowd verification: still_accessible / no_longer_accessible stamp verified_at.
+    // This is the timestamp no major mapping app surfaces — our core differentiator.
+    if (status === "still_accessible" || status === "no_longer_accessible") {
+      await SpotModel.updateMany(
+        { osm_id: spot_id },
+        { $set: { verified_at: now } }
+      );
+    }
+
     // Update report_flags on cached spot if 3+ negative reports in 7 days
-    if (status !== "confirmed_ok") {
+    const negativeStatuses = ["blocked", "damaged", "not_accessible", "no_longer_accessible"];
+    if (negativeStatuses.includes(status)) {
       const sevenDaysAgo = new Date(Date.now() - 7 * 86400000);
       const negativeCount = await ReportModel.countDocuments({
         spot_id,
-        status: { $ne: "confirmed_ok" },
+        status: { $in: negativeStatuses },
         created_at: { $gte: sevenDaysAgo },
       });
 

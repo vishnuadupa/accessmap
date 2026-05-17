@@ -8,6 +8,9 @@ export interface SpotDocument extends Document {
   loc: { type: "Point"; coordinates: [number, number] };
   wheelchair: WheelchairStatus;
   capacity_disabled: number | null;
+  van_accessible: boolean | null;
+  check_date_wheelchair: string | null;
+  verified_at: Date | null;
   surface: string | null;
   fee: boolean | null;
   covered: boolean | null;
@@ -32,6 +35,9 @@ const SpotSchema = new Schema<SpotDocument>({
     default: "unknown",
   },
   capacity_disabled: { type: Number, default: null },
+  van_accessible: { type: Boolean, default: null },
+  check_date_wheelchair: { type: String, default: null },
+  verified_at: { type: Date, default: null },
   surface: { type: String, default: null },
   fee: { type: Boolean, default: null },
   covered: { type: Boolean, default: null },

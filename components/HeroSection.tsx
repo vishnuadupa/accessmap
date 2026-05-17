@@ -78,13 +78,8 @@ export default function HeroSection() {
         {/* CTA */}
         <a
           href="#app"
-          className="inline-flex items-center gap-3 px-8 py-4 rounded-full font-semibold text-base transition-all duration-200"
-          style={{
-            background: "var(--accent)",
-            color: "#0c0c0c",
-          }}
-          onMouseEnter={(e) => (e.currentTarget.style.background = "#86efac")}
-          onMouseLeave={(e) => (e.currentTarget.style.background = "var(--accent)")}
+          className="hero-cta inline-flex items-center gap-3 px-8 py-4 rounded-full font-semibold text-base transition-all duration-200"
+          style={{ background: "var(--accent)", color: "#0c0c0c" }}
         >
           Find Parking
           <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>

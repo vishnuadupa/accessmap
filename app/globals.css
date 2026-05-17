@@ -78,6 +78,7 @@ body {
   100% { background-position: 400px 0; }
 }
 .animate-fade-up { animation: fadeUp 0.35s ease both; }
+.hero-cta:hover { background: #86efac !important; }
 .skeleton {
   background: linear-gradient(90deg, var(--surface) 25%, var(--surface-2) 50%, var(--surface) 75%);
   background-size: 800px 100%;

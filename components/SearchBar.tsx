@@ -73,6 +73,21 @@ export default function SearchBar({ onSearch, loading, history }: Props) {
             </svg>
           </button>
         )}
+
+        <button
+          onClick={() => submit()}
+          disabled={!value.trim() || loading}
+          className="flex-shrink-0 w-6 h-6 rounded-md flex items-center justify-center transition-all"
+          style={{
+            background: value.trim() && !loading ? "var(--accent)" : "transparent",
+            color: value.trim() && !loading ? "#0c0c0c" : "var(--text-3)",
+            cursor: value.trim() && !loading ? "pointer" : "default",
+          }}
+        >
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={3}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M5 12h14M12 5l7 7-7 7" />
+          </svg>
+        </button>
       </div>
 
       {/* History dropdown */}

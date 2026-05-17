@@ -66,7 +66,7 @@ export default function AppShell() {
 
   // Load history + favorites on mount
   useEffect(() => {
-    if (!sessionId) return;
+    if (sessionId === null) return;
     api.history(sessionId)
       .then((d) => setHistory(d.queries))
       .catch(() => {});
@@ -87,7 +87,7 @@ export default function AppShell() {
   }, []);
 
   const handleSearch = useCallback(async (query: string) => {
-    if (!sessionId || !query.trim()) return;
+    if (sessionId === null || !query.trim()) return;
     setSearching(true);
     setSearchError(null);
     setSelectedSpot(null);
@@ -123,7 +123,7 @@ export default function AppShell() {
   }, []);
 
   const handleGetRoute = useCallback(async (spot: ParkingSpot) => {
-    if (!sessionId) return;
+    if (sessionId === null) return;
     const origin = userLocation ?? (
       searchResult?.geocoded
         ? [searchResult.geocoded.lat, searchResult.geocoded.lon] as [number, number]
@@ -145,7 +145,7 @@ export default function AppShell() {
   }, [sessionId, userLocation, searchResult]);
 
   const handleToggleFavorite = useCallback(async (spot: ParkingSpot) => {
-    if (!sessionId) return;
+    if (sessionId === null) return;
     const isFav = favoriteIds.has(spot.osm_id);
     // Optimistic update
     setFavoriteIds((prev) => {
@@ -364,7 +364,7 @@ export default function AppShell() {
             <FavoritesPanel
               favorites={favorites}
               onRemove={async (spotId) => {
-                if (!sessionId) return;
+                if (sessionId === null) return;
                 await api.removeFavorite(sessionId, spotId);
                 setFavorites((prev) => prev.filter((f) => f.spot_id !== spotId));
                 setFavoriteIds((prev) => { const n = new Set(prev); n.delete(spotId); return n; });
@@ -406,7 +406,7 @@ export default function AppShell() {
       </div>
 
       {/* ── Map ─────────────────────────────────────────────────────────── */}
-      <div className="flex-1 relative">
+      <div className="flex-1 relative" style={{ height: "100vh" }}>
         <MapView
           center={mapCenter}
           zoom={selectedSpot ? 17 : geocoded ? 15 : 12}

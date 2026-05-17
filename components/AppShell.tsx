@@ -58,6 +58,9 @@ export default function AppShell() {
   const [history, setHistory] = useState<string[]>([]);
   const [tab, setTab] = useState<Tab>("search");
 
+  // Community report breakdown for selected spot
+  const [spotCommunity, setSpotCommunity] = useState<Record<string, number> | null>(null);
+
   // Report modal
   const [reportSpot, setReportSpot] = useState<ParkingSpot | null>(null);
 
@@ -103,7 +106,18 @@ export default function AppShell() {
   }, [sessionId]);
 
   const handleSpotSelect = useCallback((spot: ParkingSpot) => {
-    setSelectedSpot((prev) => (prev?.osm_id === spot.osm_id ? null : spot));
+    setSelectedSpot((prev) => {
+      const toggled = prev?.osm_id === spot.osm_id ? null : spot;
+      if (toggled) {
+        setSpotCommunity(null);
+        api.spotDetail(toggled.osm_id)
+          .then((d) => setSpotCommunity(d.community))
+          .catch(() => {});
+      } else {
+        setSpotCommunity(null);
+      }
+      return toggled;
+    });
     setRoute(null);
     setRouteError(null);
   }, []);
@@ -257,10 +271,36 @@ export default function AppShell() {
 
         {/* Narration */}
         {searchResult?.narration && !searching && (
-          <div className="flex-shrink-0 px-5 py-3">
+          <div className="flex-shrink-0 px-5 pt-3 pb-1">
             <p className="text-sm leading-relaxed" style={{ color: "var(--text-2)" }}>
               {searchResult.narration}
             </p>
+          </div>
+        )}
+
+        {/* Parsed intent chips — show what Gemini understood */}
+        {searchResult?.query_parsed && !searching && (
+          <div className="flex-shrink-0 px-5 py-2 flex flex-wrap gap-1.5">
+            {searchResult.query_parsed.van_mode && (
+              <span className="px-2 py-0.5 rounded-md text-[10px]" style={{ background: "rgba(74,222,128,0.1)", color: "#4ade80", border: "1px solid rgba(74,222,128,0.2)" }}>
+                🚐 Van mode
+              </span>
+            )}
+            {searchResult.query_parsed.parking_type && (
+              <span className="px-2 py-0.5 rounded-md text-[10px]" style={{ background: "var(--surface)", color: "var(--text-3)", border: "1px solid var(--border)" }}>
+                {searchResult.query_parsed.parking_type}
+              </span>
+            )}
+            {searchResult.query_parsed.filters.map((f) => (
+              <span key={f} className="px-2 py-0.5 rounded-md text-[10px]" style={{ background: "var(--surface)", color: "var(--text-3)", border: "1px solid var(--border)" }}>
+                {f.replace(/_/g, " ")}
+              </span>
+            ))}
+            {searchResult.query_parsed.radius_m < 500 && (
+              <span className="px-2 py-0.5 rounded-md text-[10px]" style={{ background: "var(--surface)", color: "var(--text-3)", border: "1px solid var(--border)" }}>
+                {searchResult.query_parsed.radius_m}m radius
+              </span>
+            )}
           </div>
         )}
 
@@ -285,6 +325,7 @@ export default function AppShell() {
                   spots={spots}
                   selectedSpot={selectedSpot}
                   favoriteIds={favoriteIds}
+                  spotCommunity={spotCommunity}
                   onSelect={handleSpotSelect}
                   onRoute={handleGetRoute}
                   onFavorite={handleToggleFavorite}

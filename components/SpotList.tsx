@@ -5,6 +5,7 @@ interface Props {
   spots: ParkingSpot[];
   selectedSpot: ParkingSpot | null;
   favoriteIds: Set<string>;
+  spotCommunity: Record<string, number> | null;
   onSelect: (spot: ParkingSpot) => void;
   onRoute: (spot: ParkingSpot) => void;
   onFavorite: (spot: ParkingSpot) => void;
@@ -12,7 +13,7 @@ interface Props {
 }
 
 export default function SpotList({
-  spots, selectedSpot, favoriteIds, onSelect, onRoute, onFavorite, onReport,
+  spots, selectedSpot, favoriteIds, spotCommunity, onSelect, onRoute, onFavorite, onReport,
 }: Props) {
   if (spots.length === 0) return null;
 
@@ -25,18 +26,22 @@ export default function SpotList({
           🚐 {vanSpots.length} van-accessible spot{vanSpots.length > 1 ? "s" : ""}
         </p>
       )}
-      {spots.map((spot) => (
-        <SpotCard
-          key={spot.osm_id}
-          spot={spot}
-          selected={selectedSpot?.osm_id === spot.osm_id}
-          isFavorite={favoriteIds.has(spot.osm_id)}
-          onSelect={() => onSelect(spot)}
-          onRoute={() => onRoute(spot)}
-          onFavorite={() => onFavorite(spot)}
-          onReport={() => onReport(spot)}
-        />
-      ))}
+      {spots.map((spot) => {
+        const isSelected = selectedSpot?.osm_id === spot.osm_id;
+        return (
+          <SpotCard
+            key={spot.osm_id}
+            spot={spot}
+            selected={isSelected}
+            isFavorite={favoriteIds.has(spot.osm_id)}
+            community={isSelected ? spotCommunity : null}
+            onSelect={() => onSelect(spot)}
+            onRoute={() => onRoute(spot)}
+            onFavorite={() => onFavorite(spot)}
+            onReport={() => onReport(spot)}
+          />
+        );
+      })}
     </div>
   );
 }

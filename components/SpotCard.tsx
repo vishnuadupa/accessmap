@@ -5,6 +5,7 @@ interface Props {
   spot: ParkingSpot;
   selected: boolean;
   isFavorite: boolean;
+  community: Record<string, number> | null;
   onSelect: () => void;
   onRoute: () => void;
   onFavorite: () => void;
@@ -33,8 +34,17 @@ function parkingTypeLabel(type: ParkingSpot["parking_type"]) {
   return type ? map[type] ?? null : null;
 }
 
+const COMMUNITY_LABELS: Record<string, { label: string; color: string }> = {
+  confirmed_ok: { label: "Confirmed accessible", color: "#4ade80" },
+  still_accessible: { label: "Still accessible", color: "#86efac" },
+  blocked: { label: "Reported blocked", color: "#fb923c" },
+  damaged: { label: "Reported damaged", color: "#fb923c" },
+  no_longer_accessible: { label: "No longer accessible", color: "#f87171" },
+  not_accessible: { label: "Never accessible", color: "#f87171" },
+};
+
 export default function SpotCard({
-  spot, selected, isFavorite, onSelect, onRoute, onFavorite, onReport,
+  spot, selected, isFavorite, community, onSelect, onRoute, onFavorite, onReport,
 }: Props) {
   const verification = verificationInfo(spot);
   const parkingType = parkingTypeLabel(spot.parking_type);
@@ -177,6 +187,26 @@ export default function SpotCard({
             </span>
           )}
 
+          {/* Lit */}
+          {spot.lit === true && (
+            <span
+              className="px-2 py-0.5 rounded-md text-xs"
+              style={{ background: "var(--surface-2)", color: "var(--text-3)", border: "1px solid var(--border)" }}
+            >
+              Lit
+            </span>
+          )}
+
+          {/* Accessible spaces count */}
+          {spot.capacity_disabled !== null && spot.capacity_disabled > 0 && (
+            <span
+              className="px-2 py-0.5 rounded-md text-xs"
+              style={{ background: "rgba(74,222,128,0.08)", color: "#4ade80", border: "1px solid rgba(74,222,128,0.2)" }}
+            >
+              {spot.capacity_disabled} accessible space{spot.capacity_disabled !== 1 ? "s" : ""}
+            </span>
+          )}
+
           {/* Level */}
           {spot.level && (
             <span
@@ -232,6 +262,31 @@ export default function SpotCard({
           )}
         </div>
       </div>
+
+      {/* Community report breakdown (30-day) */}
+      {selected && community && Object.keys(community).length > 0 && (
+        <div
+          className="px-4 pb-3"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <p className="text-xs mb-2" style={{ color: "var(--text-3)" }}>Community reports (30 days)</p>
+          <div className="flex flex-wrap gap-1.5">
+            {Object.entries(community).map(([status, count]) => {
+              const meta = COMMUNITY_LABELS[status];
+              if (!meta || count === 0) return null;
+              return (
+                <span
+                  key={status}
+                  className="px-2 py-0.5 rounded-md text-xs"
+                  style={{ background: `${meta.color}12`, color: meta.color, border: `1px solid ${meta.color}30` }}
+                >
+                  {meta.label} ×{count}
+                </span>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       {/* Expanded actions */}
       {selected && (

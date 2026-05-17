@@ -96,7 +96,7 @@ export default function MapView({
       center={center}
       zoom={zoom}
       style={{ width: "100%", height: "100%" }}
-      zoomControl={false}
+      zoomControl={true}
     >
       {/* Dark map tiles — CartoDB dark matter */}
       <TileLayer
@@ -104,11 +104,6 @@ export default function MapView({
         attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a> &copy; <a href="https://carto.com/">CARTO</a>'
         maxZoom={20}
       />
-
-      {/* Zoom control in bottom-right */}
-      <div style={{ position: "absolute", bottom: 24, right: 12, zIndex: 1000 }}>
-        {/* Handled by Leaflet default */}
-      </div>
 
       {/* Fly-to controller */}
       <MapController center={center} zoom={zoom} />

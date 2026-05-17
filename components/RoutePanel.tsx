@@ -1,4 +1,5 @@
 "use client";
+import { useState } from "react";
 import type { RouteResult, ParkingSpot } from "@/types";
 
 interface Props {
@@ -45,6 +46,7 @@ function formatDistance(meters: number) {
 }
 
 export default function RoutePanel({ route, loading, error, spot, onClose }: Props) {
+  const [showSteps, setShowSteps] = useState(false);
   const distance = route?.distance_m ?? 0;
   const duration = route?.duration_s ?? 0;
 
@@ -182,6 +184,47 @@ export default function RoutePanel({ route, loading, error, spot, onClose }: Pro
                   </span>
                 ))}
               </div>
+            </div>
+          )}
+
+          {/* Turn-by-turn instructions */}
+          {route.instructions && route.instructions.length > 0 && (
+            <div>
+              <button
+                onClick={() => setShowSteps((v) => !v)}
+                className="flex items-center gap-1.5 text-xs w-full"
+                style={{ color: "var(--text-3)" }}
+              >
+                <svg
+                  width="10" height="10" viewBox="0 0 24 24" fill="none"
+                  stroke="currentColor" strokeWidth={2.5}
+                  style={{ transform: showSteps ? "rotate(90deg)" : "rotate(0deg)", transition: "transform 0.15s" }}
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M9 18l6-6-6-6" />
+                </svg>
+                {showSteps ? "Hide" : "Show"} {route.instructions.length} steps
+              </button>
+
+              {showSteps && (
+                <div className="mt-2 space-y-1">
+                  {route.instructions.map((step, i) => (
+                    <div key={i} className="flex items-start gap-2.5 py-1.5">
+                      <span
+                        className="flex-shrink-0 w-4 h-4 rounded-full flex items-center justify-center text-[9px] font-bold mt-0.5"
+                        style={{ background: "var(--surface-2)", color: "var(--text-3)" }}
+                      >
+                        {i + 1}
+                      </span>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-xs" style={{ color: "var(--text-2)" }}>{step.text}</p>
+                        <p className="text-[10px] mt-0.5" style={{ color: "var(--text-3)" }}>
+                          {formatDistance(step.distance)}
+                        </p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           )}
         </div>

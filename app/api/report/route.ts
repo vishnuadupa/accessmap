@@ -1,0 +1,80 @@
+import { NextRequest, NextResponse } from "next/server";
+import { z } from "zod";
+import { connectDB } from "@/lib/mongodb";
+import { ReportModel } from "@/models/Report";
+import { SpotModel } from "@/models/Spot";
+
+const ReportSchema = z.object({
+  session_id: z.string().uuid(),
+  spot_id: z.string().min(1).max(50).regex(/^[0-9a-zA-Z_-]+$/),
+  status: z.enum(["blocked", "damaged", "not_accessible", "confirmed_ok"]),
+  note: z.string().max(200).optional(),
+});
+
+export async function POST(req: NextRequest): Promise<NextResponse> {
+  let body: unknown;
+  try {
+    body = await req.json();
+  } catch {
+    return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
+  }
+
+  const parsed = ReportSchema.safeParse(body);
+  if (!parsed.success) {
+    return NextResponse.json(
+      { error: "Invalid request", details: parsed.error.flatten() },
+      { status: 400 }
+    );
+  }
+
+  const { session_id, spot_id, status, note } = parsed.data;
+
+  try {
+    await connectDB();
+
+    // Prevent duplicate: 1 report per session per spot per 24h
+    const oneDayAgo = new Date(Date.now() - 86400000);
+    const existing = await ReportModel.findOne({
+      session_id,
+      spot_id,
+      created_at: { $gte: oneDayAgo },
+    });
+
+    if (existing) {
+      return NextResponse.json(
+        { error: "You have already reported this spot today." },
+        { status: 429 }
+      );
+    }
+
+    await ReportModel.create({
+      session_id,
+      spot_id,
+      status,
+      note: note ?? null,
+      created_at: new Date(),
+    });
+
+    // Update report_flags on cached spot if 3+ negative reports in 7 days
+    if (status !== "confirmed_ok") {
+      const sevenDaysAgo = new Date(Date.now() - 7 * 86400000);
+      const negativeCount = await ReportModel.countDocuments({
+        spot_id,
+        status: { $ne: "confirmed_ok" },
+        created_at: { $gte: sevenDaysAgo },
+      });
+
+      if (negativeCount >= 3) {
+        await SpotModel.updateMany(
+          { osm_id: spot_id },
+          { $set: { report_flags: negativeCount } }
+        );
+      }
+    }
+
+    return NextResponse.json({ success: true });
+  } catch (err) {
+    console.error("Report submission failed:", err);
+    return NextResponse.json({ error: "Database error" }, { status: 500 });
+  }
+}

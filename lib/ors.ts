@@ -28,10 +28,16 @@ export async function geocode(query: string): Promise<GeocodedLocation | null> {
     if (!feature) return null;
 
     const [lon, lat] = feature.geometry.coordinates;
+    const props = feature.properties ?? {};
+
+    const VALID_ACCURACY = ["point", "interpolated", "centroid", "street"];
+
     return {
       lat,
       lon,
-      display_name: feature.properties?.label ?? query,
+      display_name: props.label ?? query,
+      confidence: typeof props.confidence === "number" ? props.confidence : null,
+      accuracy: VALID_ACCURACY.includes(props.accuracy) ? props.accuracy : null,
     };
   } catch {
     return null;
@@ -98,6 +104,8 @@ export async function getWheelchairRoute(
 
     const surface_summary = parseSurfaceSummary(data.extras?.surface?.summary ?? []);
     const suitability_score = parseSuitabilityScore(data.extras?.suitability?.summary ?? []);
+    const has_steps = parseHasSteps(data.extras?.waytypes?.summary ?? []);
+    const warnings = parseWarnings(route.warnings ?? []);
 
     return {
       distance_m: Math.round(summary.distance),
@@ -107,6 +115,8 @@ export async function getWheelchairRoute(
       cache_hit: false,
       surface_summary,
       suitability_score,
+      has_steps,
+      warnings,
     };
   } catch (err) {
     console.error("ORS routing exception:", err);
@@ -146,6 +156,21 @@ function parseSuitabilityScore(
   if (total === 0) return null;
   const weighted = summary.reduce((acc, s) => acc + s.value * s.amount, 0);
   return Math.round((weighted / total) * 10) / 10;
+}
+
+// ORS waytype code 5 = steps — if present anywhere on the route, wheelchair
+// users cannot complete it regardless of suitability score
+function parseHasSteps(
+  summary: { value: number; distance: number; amount: number }[]
+): boolean {
+  return summary.some((s) => s.value === 5 && s.distance > 0);
+}
+
+function parseWarnings(warnings: { code: number; message: string }[]): string[] {
+  if (!Array.isArray(warnings)) return [];
+  return warnings
+    .filter((w) => w.message && typeof w.message === "string")
+    .map((w) => String(w.message).slice(0, 200));
 }
 
 // ─── Isochrone API ────────────────────────────────────────────────────────────
@@ -218,6 +243,9 @@ export async function geocodeFallback(
       lat: parseFloat(data[0].lat),
       lon: parseFloat(data[0].lon),
       display_name: data[0].display_name,
+      // Nominatim doesn't expose ORS-style confidence/accuracy
+      confidence: null,
+      accuracy: null,
     };
   } catch {
     return null;

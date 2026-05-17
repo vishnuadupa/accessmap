@@ -35,6 +35,14 @@ export interface ParkingSpot {
   covered: boolean | null;
   lit: boolean | null;
   access: string | null;
+  // OSM height tag — max vehicle height (critical for vans in underground lots)
+  height: string | null;
+  // OSM ramp:wheelchair — does the lot have a wheelchair ramp at the entrance
+  ramp_wheelchair: boolean | null;
+  // OSM addr:street + addr:housenumber — actual street address
+  address: string | null;
+  // OSM level — floor number for multi-storey lots (e.g. 0, -1)
+  level: string | null;
   report_flags: number;
   cached_at?: Date;
   cache_key?: string;
@@ -65,6 +73,10 @@ export interface RouteResult {
   surface_summary: SurfaceSegment[];
   // ORS suitability: 0=unsuitable 1=very uncomfortable 2=OK 3=great
   suitability_score: number | null;
+  // true if ORS detected steps/stairs anywhere on this route
+  has_steps: boolean;
+  // ORS warning messages (e.g. "Surface information unconfirmed")
+  warnings: string[];
 }
 
 export interface IsochroneResult {
@@ -99,6 +111,9 @@ export interface GeocodedLocation {
   lat: number;
   lon: number;
   display_name: string;
+  // ORS geocoding quality signals — null when from Nominatim fallback
+  confidence: number | null; // 0-1; below 0.5 = location may be wrong
+  accuracy: "point" | "interpolated" | "centroid" | "street" | null;
 }
 
 // ─── API Request / Response shapes ───────────────────────────────────────────

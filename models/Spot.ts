@@ -20,6 +20,10 @@ export interface SpotDocument extends Document {
   covered: boolean | null;
   lit: boolean | null;
   access: string | null;
+  height: string | null;
+  ramp_wheelchair: boolean | null;
+  address: string | null;
+  level: string | null;
   report_flags: number;
   cached_at: Date;
   cache_key: string;
@@ -51,6 +55,10 @@ const SpotSchema = new Schema<SpotDocument>({
   covered: { type: Boolean, default: null },
   lit: { type: Boolean, default: null },
   access: { type: String, default: null },
+  height: { type: String, default: null },
+  ramp_wheelchair: { type: Boolean, default: null },
+  address: { type: String, default: null },
+  level: { type: String, default: null },
   report_flags: { type: Number, default: 0 },
   cached_at: { type: Date, default: Date.now },
   cache_key: { type: String, required: true },

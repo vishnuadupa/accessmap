@@ -80,6 +80,16 @@ function parseTag(tags: Record<string, string>): Partial<ParkingSpot> {
         : "other")
     : null;
 
+  // Build street address from OSM addr:* tags
+  const addrParts = [
+    tags["addr:housenumber"],
+    tags["addr:street"],
+  ].filter(Boolean);
+  const rawAddress = addrParts.length > 0 ? addrParts.join(" ") : null;
+
+  // ramp:wheelchair tag
+  const rampRaw = tags["ramp:wheelchair"] ?? tags["ramp"];
+
   return {
     name: safeName,
     wheelchair: (["yes", "limited", "no"].includes(tags["wheelchair"])
@@ -104,6 +114,11 @@ function parseTag(tags: Record<string, string>): Partial<ParkingSpot> {
     covered: covered === "yes" ? true : covered === "no" ? false : null,
     lit: lit === "yes" ? true : lit === "no" ? false : null,
     access: sanitizeTag(tags["access"], 30),
+    // height restriction — critical for vans (underground garages often 2.1m, vans need 2.4m+)
+    height: sanitizeTag(tags["height"] ?? tags["maxheight"], 20),
+    ramp_wheelchair: rampRaw === "yes" ? true : rampRaw === "no" ? false : null,
+    address: rawAddress ? sanitizeTag(rawAddress, 100) : null,
+    level: sanitizeTag(tags["level"], 10),
   };
 }
 

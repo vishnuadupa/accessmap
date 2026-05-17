@@ -90,6 +90,15 @@ export async function queryWheelchairParking(
 ): Promise<{ spots: ParkingSpot[]; fallback_used: boolean }> {
   const { lat, lon } = location;
 
+  // Fix: validate geocoded coordinates are finite and in range before embedding
+  // in Overpass QL. ORS/Nominatim are external — we can't assume valid output.
+  if (
+    !Number.isFinite(lat) || !Number.isFinite(lon) ||
+    Math.abs(lat) > 90 || Math.abs(lon) > 180
+  ) {
+    throw new Error(`Invalid geocoded coordinates: lat=${lat}, lon=${lon}`);
+  }
+
   let data = await fetchOverpass(buildQuery(lat, lon, radius));
   let fallback_used = false;
 

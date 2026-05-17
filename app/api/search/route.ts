@@ -1,7 +1,7 @@
 import crypto from "crypto";
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
-import { parseIntent, narrateResults } from "@/lib/gemini";
+import { parseIntent, narrateResults, stripDangerous, sanitizeQuery } from "@/lib/gemini";
 import { geocode, geocodeFallback } from "@/lib/ors";
 import { queryWheelchairParking } from "@/lib/overpass";
 import {
@@ -144,20 +144,23 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       narration = await narrateResults(spots, geocoded.display_name);
       await recordGeminiCall(session_id);
     } catch {
+      // Fix: sanitize display_name — comes from external geocoding service
+      const safeName = stripDangerous(geocoded.display_name).slice(0, 100);
       narration =
         spots.length > 0
-          ? `Found ${spots.length} parking option${spots.length > 1 ? "s" : ""} near ${geocoded.display_name}.${fallback_used ? " Accessibility status may not be confirmed for all spots." : ""}`
-          : `No accessible parking found near ${geocoded.display_name}.`;
+          ? `Found ${spots.length} parking option${spots.length > 1 ? "s" : ""} near ${safeName}.${fallback_used ? " Accessibility status may not be confirmed for all spots." : ""}`
+          : `No accessible parking found near ${safeName}.`;
     }
   } else {
+    const safeName = stripDangerous(geocoded.display_name).slice(0, 100);
     narration =
       spots && spots.length > 0
-        ? `Found ${spots.length} parking option${spots.length > 1 ? "s" : ""} near ${geocoded.display_name}.${fallback_used ? " Accessibility status may not be confirmed for all spots." : ""}`
-        : `No accessible parking found near ${geocoded.display_name}.`;
+        ? `Found ${spots.length} parking option${spots.length > 1 ? "s" : ""} near ${safeName}.${fallback_used ? " Accessibility status may not be confirmed for all spots." : ""}`
+        : `No accessible parking found near ${safeName}.`;
   }
 
-  // ── 9. Record query history (background, non-blocking) ────────────────────
-  appendQueryHistory(session_id, query).catch(() => {});
+  // ── 9. Record query history — sanitize before storing (goes to DB, may be displayed)
+  appendQueryHistory(session_id, sanitizeQuery(query)).catch(() => {});
 
   const response: SearchResponse = {
     spots: spots ?? [],

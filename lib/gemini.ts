@@ -15,9 +15,17 @@ const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
 function sanitizeForPrompt(str: string): string {
   return str
     .slice(0, 200)
+    // Strip characters that break out of prompt context
     .replace(/[<>"'`\\]/g, " ")
+    // Strip our own delimiter words — prevents USER_QUERY_END spoofing
+    .replace(/USER_QUERY_(START|END)/gi, "")
     .replace(/\s+/g, " ")
     .trim();
+}
+
+// Sanitize a string for safe storage in query_history (goes to DB, may be displayed)
+export function sanitizeQuery(str: string): string {
+  return stripDangerous(str).slice(0, 200);
 }
 
 // Strip HTML tags from any string before including in prompts or storing.

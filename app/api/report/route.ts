@@ -1,9 +1,19 @@
+import crypto from "crypto";
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { connectDB } from "@/lib/mongodb";
 import { ReportModel } from "@/models/Report";
 import { SpotModel } from "@/models/Spot";
 import { stripDangerous } from "@/lib/gemini";
+import { checkIpRateLimit, recordIpRequest } from "@/lib/cache";
+
+function getHashedIp(req: NextRequest): string {
+  const raw =
+    req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ??
+    req.headers.get("x-real-ip") ??
+    "unknown";
+  return crypto.createHash("sha256").update(raw).digest("hex").slice(0, 24);
+}
 
 const ReportSchema = z.object({
   session_id: z.string().uuid(),
@@ -27,6 +37,17 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   }
 
   const { session_id, spot_id, status, note } = parsed.data;
+
+  // Fix: IP rate limit — prevents mass-reporting via UUID rotation
+  const hashedIp = getHashedIp(req);
+  const ipAllowed = await checkIpRateLimit(hashedIp);
+  if (!ipAllowed) {
+    return NextResponse.json(
+      { error: "Too many requests. Please wait a moment and try again." },
+      { status: 429 }
+    );
+  }
+  recordIpRequest(hashedIp).catch(() => {});
 
   try {
     await connectDB();

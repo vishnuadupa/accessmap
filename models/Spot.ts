@@ -57,7 +57,14 @@ const SpotSchema = new Schema<SpotDocument>({
 });
 
 SpotSchema.index({ loc: "2dsphere" });
-SpotSchema.index({ cache_key: 1, cached_at: 1 });
+// osm_id lookup: spot detail endpoint + verified_at update in report route
+SpotSchema.index({ osm_id: 1 });
+// cache lookup: simple key scan, no need for cached_at in the key
+SpotSchema.index({ cache_key: 1 });
+// van_accessible filter: stats aggregation + future geo-filter of van spots
+SpotSchema.index({ van_accessible: 1 });
+// verified_at: sort by most recently crowd-verified
+SpotSchema.index({ verified_at: -1 });
 // TTL index: auto-delete cached spots after 24 hours
 SpotSchema.index({ cached_at: 1 }, { expireAfterSeconds: 86400 });
 

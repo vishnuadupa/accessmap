@@ -7,6 +7,8 @@ export interface RouteDocument extends Document {
   duration_s: number;
   geometry: string;
   instructions: { text: string; distance: number; duration: number }[];
+  surface_summary: { label: string; percent: number }[];
+  suitability_score: number | null;
   cached_at: Date;
 }
 
@@ -23,6 +25,8 @@ const RouteSchema = new Schema<RouteDocument>({
       duration: Number,
     },
   ],
+  surface_summary: [{ label: String, percent: Number }],
+  suitability_score: { type: Number, default: null },
   cached_at: { type: Date, default: Date.now },
 });
 

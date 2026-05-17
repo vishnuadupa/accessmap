@@ -137,8 +137,21 @@ export interface ReportRequest {
   note?: string;
 }
 
+export interface SavedFavorite {
+  _id: string;
+  spot_id: string;
+  spot_name: string;
+  spot_loc: GeoPoint;
+  wheelchair: WheelchairStatus | null;
+  van_accessible: boolean | null;
+  parking_type: ParkingSpot["parking_type"];
+  opening_hours: string | null;
+  report_flags: number;
+  saved_at: Date;
+}
+
 export interface FavoritesResponse {
-  favorites: ParkingSpot[];
+  favorites: SavedFavorite[];
 }
 
 // ─── Overpass raw response ────────────────────────────────────────────────────

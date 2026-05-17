@@ -20,12 +20,12 @@ const ReportSchema = new Schema<ReportDocument>({
   created_at: { type: Date, default: Date.now },
 });
 
+// Covers: fetch recent reports for a spot, sorted by date
 ReportSchema.index({ spot_id: 1, created_at: -1 });
-// Prevent duplicate reports: 1 report per session per spot per day
-ReportSchema.index(
-  { spot_id: 1, session_id: 1, created_at: 1 },
-  { unique: false }
-);
+// Covers: duplicate check (session already reported this spot today)
+ReportSchema.index({ spot_id: 1, session_id: 1, created_at: -1 });
+// Covers: negativeCount query in report route + stats aggregation by status
+ReportSchema.index({ spot_id: 1, status: 1, created_at: -1 });
 
 export const ReportModel =
   mongoose.models.Report ||

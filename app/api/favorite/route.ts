@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { connectDB } from "@/lib/mongodb";
 import { FavoriteModel } from "@/models/Favorite";
+import { SpotModel } from "@/models/Spot";
 import { stripDangerous } from "@/lib/gemini";
 
 const FavoriteSchema = z.object({
@@ -56,6 +57,10 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       return NextResponse.json({ success: true });
     }
 
+    // Snapshot key accessibility fields from the Spot cache so the favorites
+    // list stays informative after the 24h Spot TTL expires.
+    const cachedSpot = await SpotModel.findOne({ osm_id: spot_id }).lean();
+
     await FavoriteModel.findOneAndUpdate(
       { session_id, spot_id },
       {
@@ -63,6 +68,11 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
         spot_id,
         spot_name: safeName,
         spot_loc: spot_loc ?? { type: "Point", coordinates: [0, 0] },
+        wheelchair: cachedSpot?.wheelchair ?? null,
+        van_accessible: cachedSpot?.van_accessible ?? null,
+        parking_type: cachedSpot?.parking_type ?? null,
+        opening_hours: cachedSpot?.opening_hours ?? null,
+        report_flags: cachedSpot?.report_flags ?? 0,
         saved_at: new Date(),
       },
       { upsert: true }

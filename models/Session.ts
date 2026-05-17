@@ -20,6 +20,9 @@ const SessionSchema = new Schema<SessionDocument>({
 });
 
 SessionSchema.index({ session_id: 1 }, { unique: true });
+// TTL: auto-delete inactive sessions after 90 days.
+// IP rate-limit records (session_id prefix "ip:") also cleaned up here.
+SessionSchema.index({ last_active: 1 }, { expireAfterSeconds: 7776000 });
 
 export const SessionModel =
   mongoose.models.Session ||

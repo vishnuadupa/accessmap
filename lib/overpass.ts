@@ -51,6 +51,8 @@ function parseVanAccessible(tags: Record<string, string>): boolean | null {
 // Validate OSM check_date:wheelchair values (format: YYYY, YYYY-MM, or YYYY-MM-DD)
 const CHECK_DATE_RE = /^\d{4}(-\d{2}(-\d{2})?)?$/;
 
+const PARKING_TYPES = ["surface", "multi-storey", "underground", "rooftop", "street_side"] as const;
+
 function parseTag(tags: Record<string, string>): Partial<ParkingSpot> {
   const fee = tags["fee"];
   const lit = tags["lit"];
@@ -62,12 +64,21 @@ function parseTag(tags: Record<string, string>): Partial<ParkingSpot> {
   const safeName = sanitizeTag(rawName, 100) ?? "Unnamed Parking";
 
   const capacityRaw = parseInt(tags["capacity:disabled"] ?? "", 10);
+  const capacityTotalRaw = parseInt(tags["capacity"] ?? "", 10);
 
   // check_date:wheelchair = when a human last verified accessibility on the ground.
   // No major mapping app surfaces this — it's our key differentiator.
   const rawCheckDate = tags["check_date:wheelchair"] ?? tags["check_date"] ?? null;
   const check_date_wheelchair =
     rawCheckDate && CHECK_DATE_RE.test(rawCheckDate) ? rawCheckDate : null;
+
+  // parking type — critical accessibility signal: underground often has no ramp
+  const rawParking = tags["parking"];
+  const parking_type = rawParking
+    ? (PARKING_TYPES.includes(rawParking as typeof PARKING_TYPES[number])
+        ? (rawParking as ParkingSpot["parking_type"])
+        : "other")
+    : null;
 
   return {
     name: safeName,
@@ -77,6 +88,13 @@ function parseTag(tags: Record<string, string>): Partial<ParkingSpot> {
     van_accessible: parseVanAccessible(tags),
     check_date_wheelchair,
     verified_at: null,
+    opening_hours: sanitizeTag(tags["opening_hours"], 100),
+    parking_type,
+    maxstay: sanitizeTag(tags["maxstay"], 50),
+    capacity_total:
+      !isNaN(capacityTotalRaw) && capacityTotalRaw > 0 && capacityTotalRaw < 100000
+        ? capacityTotalRaw
+        : null,
     capacity_disabled:
       !isNaN(capacityRaw) && capacityRaw > 0 && capacityRaw < 10000
         ? capacityRaw

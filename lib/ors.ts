@@ -1,4 +1,4 @@
-import type { RouteResult, GeocodedLocation } from "@/types";
+import type { RouteResult, RouteInstruction, SurfaceSegment, IsochroneResult, GeocodedLocation } from "@/types";
 
 const ORS_BASE = "https://api.openrouteservice.org";
 const API_KEY = process.env.ORS_API_KEY;
@@ -57,6 +57,9 @@ export async function getWheelchairRoute(
     ],
     instructions: true,
     units: "m",
+    // extra_info adds per-segment surface type and suitability at zero extra cost.
+    // Surface tells users "38% of this route is cobblestone" — critical for wheelchair users.
+    extra_info: ["surface", "waytypes", "suitability"],
   };
 
   try {
@@ -84,7 +87,7 @@ export async function getWheelchairRoute(
     if (!route) return null;
 
     const summary = route.summary;
-    const steps: { text: string; distance: number; duration: number }[] =
+    const steps: RouteInstruction[] =
       (route.segments?.[0]?.steps ?? []).map(
         (s: { instruction: string; distance: number; duration: number }) => ({
           text: s.instruction,
@@ -93,15 +96,96 @@ export async function getWheelchairRoute(
         })
       );
 
+    const surface_summary = parseSurfaceSummary(data.extras?.surface?.summary ?? []);
+    const suitability_score = parseSuitabilityScore(data.extras?.suitability?.summary ?? []);
+
     return {
       distance_m: Math.round(summary.distance),
       duration_s: Math.round(summary.duration),
-      geometry: route.geometry, // encoded polyline
+      geometry: route.geometry,
       instructions: steps,
       cache_hit: false,
+      surface_summary,
+      suitability_score,
     };
   } catch (err) {
     console.error("ORS routing exception:", err);
+    return null;
+  }
+}
+
+// ─── ORS surface/suitability parsers ─────────────────────────────────────────
+
+// ORS surface codes → human labels
+// https://giscience.github.io/openrouteservice/documentation/extra-info/Surface
+const SURFACE_LABELS: Record<number, string> = {
+  0: "unknown", 1: "paved", 2: "unpaved", 3: "asphalt", 4: "concrete",
+  5: "cobblestone", 6: "metal", 7: "wood", 8: "compacted gravel",
+  9: "fine gravel", 10: "gravel", 11: "dirt", 12: "ground",
+  13: "ice", 14: "paving stones", 15: "sand", 17: "grass",
+};
+
+function parseSurfaceSummary(
+  summary: { value: number; distance: number; amount: number }[]
+): SurfaceSegment[] {
+  return summary
+    .filter((s) => s.value !== 0 && s.amount > 1) // skip unknown + tiny slivers
+    .map((s) => ({
+      label: SURFACE_LABELS[s.value] ?? "other",
+      percent: Math.round(s.amount),
+    }))
+    .sort((a, b) => b.percent - a.percent);
+}
+
+function parseSuitabilityScore(
+  summary: { value: number; distance: number; amount: number }[]
+): number | null {
+  if (summary.length === 0) return null;
+  // Weighted average of suitability values (0-3) by distance share
+  const total = summary.reduce((acc, s) => acc + s.amount, 0);
+  if (total === 0) return null;
+  const weighted = summary.reduce((acc, s) => acc + s.value * s.amount, 0);
+  return Math.round((weighted / total) * 10) / 10;
+}
+
+// ─── Isochrone API ────────────────────────────────────────────────────────────
+
+export async function getIsochrone(
+  destination: [number, number], // [lat, lon]
+  range_seconds = 300            // default: 5-minute wheelchair roll
+): Promise<IsochroneResult | null> {
+  if (!API_KEY) {
+    console.warn("ORS_API_KEY not set — isochrone will fail");
+    return null;
+  }
+
+  const body = {
+    locations: [[destination[1], destination[0]]], // ORS expects [lon, lat]
+    range: [range_seconds],
+    range_type: "time",
+    attributes: ["area"],
+  };
+
+  try {
+    const resp = await fetch(`${ORS_BASE}/v2/isochrones/wheelchair`, {
+      method: "POST",
+      headers: {
+        Authorization: API_KEY,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(body),
+      signal: AbortSignal.timeout(10000),
+    });
+
+    if (!resp.ok) {
+      console.error("ORS isochrone error:", resp.status, await resp.text());
+      return null;
+    }
+
+    const data = await resp.json();
+    return { ...data, cache_hit: false } as IsochroneResult;
+  } catch (err) {
+    console.error("ORS isochrone exception:", err);
     return null;
   }
 }

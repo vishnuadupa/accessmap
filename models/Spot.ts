@@ -11,6 +11,10 @@ export interface SpotDocument extends Document {
   van_accessible: boolean | null;
   check_date_wheelchair: string | null;
   verified_at: Date | null;
+  opening_hours: string | null;
+  parking_type: string | null;
+  maxstay: string | null;
+  capacity_total: number | null;
   surface: string | null;
   fee: boolean | null;
   covered: boolean | null;
@@ -38,6 +42,10 @@ const SpotSchema = new Schema<SpotDocument>({
   van_accessible: { type: Boolean, default: null },
   check_date_wheelchair: { type: String, default: null },
   verified_at: { type: Date, default: null },
+  opening_hours: { type: String, default: null },
+  parking_type: { type: String, default: null },
+  maxstay: { type: String, default: null },
+  capacity_total: { type: Number, default: null },
   surface: { type: String, default: null },
   fee: { type: Boolean, default: null },
   covered: { type: Boolean, default: null },

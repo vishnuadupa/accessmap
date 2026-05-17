@@ -22,6 +22,14 @@ export interface ParkingSpot {
   check_date_wheelchair: string | null;
   // Last time a user confirmed/denied accessibility via crowd report
   verified_at: Date | null;
+  // Raw OSM opening_hours string (e.g. "Mo-Fr 08:00-20:00; PH off")
+  opening_hours: string | null;
+  // OSM parking tag: surface lot, garage, underground, rooftop
+  parking_type: "surface" | "multi-storey" | "underground" | "rooftop" | "street_side" | "other" | null;
+  // Max stay allowed (e.g. "2 hours", "disabled only", "unlimited")
+  maxstay: string | null;
+  // Total capacity of the lot (context for congestion)
+  capacity_total: number | null;
   surface: string | null;
   fee: boolean | null;
   covered: boolean | null;
@@ -42,22 +50,46 @@ export interface RouteInstruction {
   duration: number;
 }
 
+export interface SurfaceSegment {
+  label: string;   // "asphalt", "gravel", "cobblestone", etc.
+  percent: number; // 0-100 share of total route distance
+}
+
 export interface RouteResult {
   distance_m: number;
   duration_s: number;
   geometry: string; // encoded polyline
   instructions: RouteInstruction[];
   cache_hit: boolean;
+  // ORS extra_info: surface breakdown (% of route by surface type)
+  surface_summary: SurfaceSegment[];
+  // ORS suitability: 0=unsuitable 1=very uncomfortable 2=OK 3=great
+  suitability_score: number | null;
+}
+
+export interface IsochroneResult {
+  // GeoJSON FeatureCollection — polygon of wheelchair-reachable area
+  type: "FeatureCollection";
+  features: {
+    type: "Feature";
+    geometry: { type: "Polygon"; coordinates: number[][][] };
+    properties: { value: number; area: number };
+  }[];
+  cache_hit: boolean;
 }
 
 // ─── Gemini Parsed Intent ─────────────────────────────────────────────────────
 
-export type SpotFilter = "covered" | "free" | "lit" | "near_elevator";
+export type SpotFilter = "covered" | "free" | "lit" | "near_elevator" | "open_now" | "no_time_limit";
 
 export interface ParsedIntent {
   location: string;
   radius_m: number;
   filters: SpotFilter[];
+  // Preferred parking structure type from user query ("indoor", "garage", etc.)
+  parking_type: "surface" | "multi-storey" | "underground" | "rooftop" | null;
+  // true when user mentions van, ramp, power chair — prioritize van_accessible spots
+  van_mode: boolean;
   ambiguous: boolean;
 }
 

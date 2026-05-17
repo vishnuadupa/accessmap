@@ -13,7 +13,7 @@ import {
   checkIpRateLimit,
   recordIpRequest,
 } from "@/lib/cache";
-import type { SearchResponse, SpotFilter } from "@/types";
+import type { SearchResponse, SpotFilter, ParsedIntent } from "@/types";
 
 const SearchSchema = z.object({
   query: z.string().min(1).max(200),
@@ -61,10 +61,12 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   const geminiAllowed = await canMakeGeminiCall(session_id);
 
   // ── 4. Parse intent with Gemini ────────────────────────────────────────────
-  let intent = {
+  let intent: ParsedIntent = {
     location: query,
     radius_m: 500,
-    filters: [] as SpotFilter[],
+    filters: [],
+    parking_type: null,
+    van_mode: false,
     ambiguous: false,
   };
 
@@ -123,14 +125,28 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     }
   }
 
-  // ── 7. Apply filter preferences ───────────────────────────────────────────
-  if (intent.filters.length > 0 && spots && spots.length > 0) {
-    const filtered = spots.filter((s) => {
+  // ── 7. Apply filter + intent preferences ──────────────────────────────────
+  if (spots && spots.length > 0) {
+    let filtered = spots.filter((s) => {
       if (intent.filters.includes("free") && s.fee === true) return false;
       if (intent.filters.includes("covered") && s.covered === false) return false;
       if (intent.filters.includes("lit") && s.lit === false) return false;
+      // no_time_limit: exclude spots with a maxstay set (has a time restriction)
+      if (intent.filters.includes("no_time_limit") && s.maxstay !== null) return false;
+      // parking_type: match preferred structure type from user query
+      if (intent.parking_type && s.parking_type !== null && s.parking_type !== intent.parking_type) return false;
       return true;
     });
+
+    // van_mode: if user is in van mode, sort van-accessible spots to the top
+    // rather than hard-filtering (there may be very few van_accessible spots)
+    if (intent.van_mode && filtered.length > 0) {
+      filtered = [
+        ...filtered.filter((s) => s.van_accessible === true),
+        ...filtered.filter((s) => s.van_accessible !== true),
+      ];
+    }
+
     if (filtered.length > 0) spots = filtered;
   }
 

@@ -84,6 +84,9 @@ export async function getCachedRoute(
       geometry: doc.geometry,
       instructions: doc.instructions,
       cache_hit: true,
+      // Surface data isn't stored in route cache — re-fetched on cache miss
+      surface_summary: [],
+      suitability_score: null,
     };
   } catch {
     return null;

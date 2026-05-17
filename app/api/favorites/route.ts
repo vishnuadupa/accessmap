@@ -12,10 +12,7 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
 
   const parsed = QuerySchema.safeParse({ session_id: sessionId });
   if (!parsed.success) {
-    return NextResponse.json(
-      { error: "Valid session_id required" },
-      { status: 400 }
-    );
+    return NextResponse.json({ error: "Invalid request" }, { status: 400 });
   }
 
   try {

@@ -19,10 +19,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 
   const parsed = RouteSchema.safeParse(body);
   if (!parsed.success) {
-    return NextResponse.json(
-      { error: "Invalid request", details: parsed.error.flatten() },
-      { status: 400 }
-    );
+    return NextResponse.json({ error: "Invalid request" }, { status: 400 });
   }
 
   const { origin, destination } = parsed.data;

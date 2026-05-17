@@ -3,6 +3,7 @@ import { z } from "zod";
 import { connectDB } from "@/lib/mongodb";
 import { ReportModel } from "@/models/Report";
 import { SpotModel } from "@/models/Spot";
+import { stripDangerous } from "@/lib/gemini";
 
 const ReportSchema = z.object({
   session_id: z.string().uuid(),
@@ -21,10 +22,8 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 
   const parsed = ReportSchema.safeParse(body);
   if (!parsed.success) {
-    return NextResponse.json(
-      { error: "Invalid request", details: parsed.error.flatten() },
-      { status: 400 }
-    );
+    // H1 FIX: never return Zod field details
+    return NextResponse.json({ error: "Invalid request" }, { status: 400 });
   }
 
   const { session_id, spot_id, status, note } = parsed.data;
@@ -47,11 +46,14 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       );
     }
 
+    // M3 FIX: sanitize free-text note before storing — user-supplied, goes to DB and frontend
+    const safeNote = note ? stripDangerous(note).slice(0, 200) || null : null;
+
     await ReportModel.create({
       session_id,
       spot_id,
       status,
-      note: note ?? null,
+      note: safeNote,
       created_at: new Date(),
     });
 

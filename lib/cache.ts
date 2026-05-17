@@ -115,6 +115,68 @@ export async function setCachedRoute(
   }
 }
 
+// ─── IP rate limiting ─────────────────────────────────────────────────────────
+// Uses Session collection with "ip:" prefix — distinct from real UUID session_ids.
+// Limit: 60 search requests per IP per hour. Stored as hashed IP, never raw.
+
+export async function checkIpRateLimit(hashedIp: string): Promise<boolean> {
+  try {
+    await connectDB();
+    const { SessionModel } = await import("@/models/Session");
+    const key = `ip:${hashedIp}`;
+    const doc = await SessionModel.findOne({ session_id: key }).lean();
+    if (!doc) return true;
+
+    const hoursSinceReset =
+      (Date.now() - new Date(doc.gemini_calls_reset_at).getTime()) / 3600000;
+    if (hoursSinceReset >= 1) return true;
+    return doc.gemini_calls_today < 60;
+  } catch {
+    return true;
+  }
+}
+
+export async function recordIpRequest(hashedIp: string): Promise<void> {
+  try {
+    await connectDB();
+    const { SessionModel } = await import("@/models/Session");
+    const key = `ip:${hashedIp}`;
+    const now = new Date();
+
+    await SessionModel.findOneAndUpdate(
+      { session_id: key },
+      [
+        {
+          $set: {
+            gemini_calls_today: {
+              $cond: {
+                if: {
+                  $gte: [{ $subtract: [now, "$gemini_calls_reset_at"] }, 3600000],
+                },
+                then: 1,
+                else: { $add: ["$gemini_calls_today", 1] },
+              },
+            },
+            gemini_calls_reset_at: {
+              $cond: {
+                if: {
+                  $gte: [{ $subtract: [now, "$gemini_calls_reset_at"] }, 3600000],
+                },
+                then: now,
+                else: "$gemini_calls_reset_at",
+              },
+            },
+            last_active: now,
+          },
+        },
+      ],
+      { upsert: true }
+    );
+  } catch {
+    // Non-fatal
+  }
+}
+
 // ─── Session helpers ──────────────────────────────────────────────────────────
 
 export async function canMakeGeminiCall(session_id: string): Promise<boolean> {

@@ -74,6 +74,7 @@ export interface SearchResponse {
   narration: string;
   geocoded: GeocodedLocation;
   cache_hit: boolean;
+  fallback_used: boolean; // true = 0 accessible spots found, showing all parking instead
   query_parsed: ParsedIntent;
   error?: string;
 }

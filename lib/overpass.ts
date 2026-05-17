@@ -1,4 +1,12 @@
 import type { OverpassResponse, ParkingSpot, GeocodedLocation } from "@/types";
+import { stripDangerous } from "@/lib/gemini";
+
+// Sanitize OSM tag string values before storing or using in prompts.
+// OSM is public — anyone can set a parking spot name to injection content.
+function sanitizeTag(value: string | undefined, maxLen = 100): string | null {
+  if (!value) return null;
+  return stripDangerous(value).slice(0, maxLen) || null;
+}
 
 const OVERPASS_ENDPOINTS = [
   "https://overpass-api.de/api/interpreter",
@@ -29,23 +37,27 @@ function parseTag(tags: Record<string, string>): Partial<ParkingSpot> {
   const lit = tags["lit"];
   const covered = tags["covered"];
 
+  // Sanitize all string fields — OSM is public and any contributor can set arbitrary values
+  const rawName =
+    tags["name"] || tags["operator"] || tags["brand"] || "Unnamed Parking";
+  const safeName = sanitizeTag(rawName, 100) ?? "Unnamed Parking";
+
+  const capacityRaw = parseInt(tags["capacity:disabled"] ?? "", 10);
+
   return {
-    name:
-      tags["name"] ||
-      tags["operator"] ||
-      tags["brand"] ||
-      "Unnamed Parking",
+    name: safeName,
     wheelchair: (["yes", "limited", "no"].includes(tags["wheelchair"])
       ? tags["wheelchair"]
       : "unknown") as ParkingSpot["wheelchair"],
-    capacity_disabled: tags["capacity:disabled"]
-      ? parseInt(tags["capacity:disabled"], 10) || null
-      : null,
-    surface: tags["surface"] ?? null,
+    capacity_disabled:
+      !isNaN(capacityRaw) && capacityRaw > 0 && capacityRaw < 10000
+        ? capacityRaw
+        : null,
+    surface: sanitizeTag(tags["surface"], 50),
     fee: fee === "yes" ? true : fee === "no" ? false : null,
     covered: covered === "yes" ? true : covered === "no" ? false : null,
     lit: lit === "yes" ? true : lit === "no" ? false : null,
-    access: tags["access"] ?? null,
+    access: sanitizeTag(tags["access"], 30),
   };
 }
 

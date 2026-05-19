@@ -10,7 +10,6 @@ const FavoriteSchema = z.object({
   // M1 FIX: add same regex guard as /api/report for consistency
   spot_id: z.string().min(1).max(50).regex(/^[0-9a-zA-Z_-]+$/),
   action: z.enum(["save", "remove"]),
-  // M2 FIX: spot_name comes from OSM data or frontend — sanitize before storing
   spot_name: z.string().max(200).optional(),
   spot_loc: z
     .object({
@@ -36,7 +35,6 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 
   const { session_id, spot_id, action, spot_name, spot_loc } = parsed.data;
 
-  // M2 FIX: strip HTML/dangerous chars from spot_name before persisting
   const safeName = spot_name
     ? stripDangerous(spot_name).slice(0, 150) || "Unnamed Parking"
     : "Unnamed Parking";

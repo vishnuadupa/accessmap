@@ -1,16 +1,19 @@
 "use client";
 import { useEffect, useRef } from "react";
 import { MapContainer, TileLayer, Marker, Popup, Polyline, GeoJSON, Circle, useMap } from "react-leaflet";
-import L from "leaflet";
+import L, { Icon } from "leaflet";
 import type { ParkingSpot, RouteResult, IsochroneResult } from "@/types";
 
 // Fix default marker icon (webpack issue with Leaflet)
-delete (L.Icon.Default.prototype as unknown as Record<string, unknown>)._getIconUrl;
-L.Icon.Default.mergeOptions({
-  iconRetinaUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png",
+const customIcon = new Icon({
   iconUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png",
+  iconRetinaUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png",
   shadowUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png",
+  iconSize: [25, 41],
+  iconAnchor: [12, 41],
+  popupAnchor: [1, -34],
 });
+L.Marker.prototype.options.icon = customIcon;
 
 // Decode Google-encoded polyline
 function decodePolyline(encoded: string): [number, number][] {

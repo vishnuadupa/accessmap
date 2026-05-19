@@ -1,18 +1,16 @@
 "use client";
-import { useState, useEffect, useCallback, type ComponentType } from "react";
+import { useState, useEffect, useCallback, useMemo, type ComponentType } from "react";
 import { useSession } from "@/hooks/useSession";
 import { api } from "@/lib/api";
 import type {
   ParkingSpot,
   SearchResponse,
-  RouteResult,
   IsochroneResult,
   SavedFavorite,
 } from "@/types";
 import type { Props as MapViewProps } from "./MapView";
 import SearchBar from "./SearchBar";
 import SpotList from "./SpotList";
-import RoutePanel from "./RoutePanel";
 import ReportModal from "./ReportModal";
 import FavoritesPanel from "./FavoritesPanel";
 
@@ -42,12 +40,12 @@ export default function AppShell() {
   const [searching, setSearching] = useState(false);
   const [searchError, setSearchError] = useState<string | null>(null);
 
-  // Selection + route
+  // Selection
   const [selectedSpot, setSelectedSpot] = useState<ParkingSpot | null>(null);
-  const [route, setRoute] = useState<RouteResult | null>(null);
-  const [routing, setRouting] = useState(false);
-  const [routeError, setRouteError] = useState<string | null>(null);
   const [userLocation, setUserLocation] = useState<[number, number] | null>(null);
+
+  // Quick filters (client-side)
+  const [activeFilters, setActiveFilters] = useState<Set<string>>(new Set());
 
   // Isochrone
   const [isochrone, setIsochrone] = useState<IsochroneResult | null>(null);
@@ -89,16 +87,16 @@ export default function AppShell() {
     );
   }, []);
 
-  const handleSearch = useCallback(async (query: string) => {
+  const handleSearch = useCallback(async (query: string, coords?: { lat: number; lon: number }) => {
     if (sessionId === null || !query.trim()) return;
     setSearching(true);
     setSearchError(null);
     setSelectedSpot(null);
-    setRoute(null);
     setIsochrone(null);
+    setActiveFilters(new Set());
     setTab("search");
     try {
-      const result = await api.search(query, sessionId);
+      const result = await api.search(query, sessionId, coords);
       setSearchResult(result);
       setHistory((prev) => [query, ...prev.filter((q) => q !== query)].slice(0, 10));
     } catch (err) {
@@ -107,6 +105,22 @@ export default function AppShell() {
       setSearching(false);
     }
   }, [sessionId]);
+
+  const handleNearMe = useCallback(() => {
+    if (userLocation) {
+      handleSearch("accessible parking near me", { lat: userLocation[0], lon: userLocation[1] });
+      return;
+    }
+    navigator.geolocation?.getCurrentPosition(
+      (pos) => {
+        const coords = { lat: pos.coords.latitude, lon: pos.coords.longitude };
+        setUserLocation([pos.coords.latitude, pos.coords.longitude]);
+        handleSearch("accessible parking near me", coords);
+      },
+      () => setSearchError("Location access denied. Enable location in your browser and try again."),
+      { timeout: 8000 }
+    );
+  }, [userLocation, handleSearch]);
 
   const handleSpotSelect = useCallback((spot: ParkingSpot) => {
     setSelectedSpot((prev) => {
@@ -121,31 +135,14 @@ export default function AppShell() {
       }
       return toggled;
     });
-    setRoute(null);
-    setRouteError(null);
   }, []);
 
-  const handleGetRoute = useCallback(async (spot: ParkingSpot) => {
-    if (sessionId === null) return;
-    const origin = userLocation ?? (
-      searchResult?.geocoded
-        ? [searchResult.geocoded.lat, searchResult.geocoded.lon] as [number, number]
-        : null
-    );
-    if (!origin) { setRouteError("Enable location or search for an address to get directions."); return; }
-
-    setRouting(true);
-    setRouteError(null);
-    const dest: [number, number] = [spot.loc.coordinates[1], spot.loc.coordinates[0]];
-    try {
-      const r = await api.route(origin, dest, spot.osm_id);
-      setRoute(r);
-    } catch (err) {
-      setRouteError(err instanceof Error ? err.message : "Routing failed");
-    } finally {
-      setRouting(false);
-    }
-  }, [sessionId, userLocation, searchResult]);
+  const handleGetRoute = useCallback((spot: ParkingSpot) => {
+    const [lon, lat] = spot.loc.coordinates;
+    let url = `https://www.google.com/maps/dir/?api=1&destination=${lat},${lon}&travelmode=walking`;
+    if (userLocation) url += `&origin=${userLocation[0]},${userLocation[1]}`;
+    window.open(url, "_blank", "noopener,noreferrer");
+  }, [userLocation]);
 
   const handleToggleFavorite = useCallback(async (spot: ParkingSpot) => {
     if (sessionId === null) return;
@@ -188,6 +185,26 @@ export default function AppShell() {
   }, [searchResult]);
 
   const spots = searchResult?.spots ?? [];
+
+  const displaySpots = useMemo(() => {
+    if (activeFilters.size === 0) return spots;
+    return spots.filter((s) => {
+      if (activeFilters.has("free") && s.fee !== false) return false;
+      if (activeFilters.has("van") && s.van_accessible !== true) return false;
+      if (activeFilters.has("covered") && s.covered !== true) return false;
+      if (activeFilters.has("verified") && !s.verified_at && !s.check_date_wheelchair) return false;
+      return true;
+    });
+  }, [spots, activeFilters]);
+
+  const toggleFilter = useCallback((f: string) => {
+    setActiveFilters((prev) => {
+      const next = new Set(prev);
+      next.has(f) ? next.delete(f) : next.add(f);
+      return next;
+    });
+  }, []);
+
   const geocoded = searchResult?.geocoded ?? null;
   const mapCenter: [number, number] = selectedSpot
     ? [selectedSpot.loc.coordinates[1], selectedSpot.loc.coordinates[0]]
@@ -237,11 +254,31 @@ export default function AppShell() {
             </div>
           </div>
           {tab === "search" && (
-            <SearchBar
-              onSearch={handleSearch}
-              loading={searching}
-              history={history}
-            />
+            <div className="flex gap-2">
+              <div className="flex-1">
+                <SearchBar
+                  onSearch={handleSearch}
+                  loading={searching}
+                  history={history}
+                />
+              </div>
+              <button
+                onClick={handleNearMe}
+                disabled={searching}
+                title="Search near my location"
+                className="flex-shrink-0 flex items-center justify-center w-10 h-10 rounded-xl transition-all"
+                style={{
+                  background: "var(--surface)",
+                  border: "1px solid var(--border-2, #2e2e2e)",
+                  color: userLocation ? "var(--accent)" : "var(--text-3)",
+                }}
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+                  <circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/>
+                  <circle cx="12" cy="12" r="8" strokeDasharray="2 3"/>
+                </svg>
+              </button>
+            </div>
           )}
         </div>
 
@@ -281,51 +318,56 @@ export default function AppShell() {
           </div>
         )}
 
-        {/* Parsed intent chips — show what Gemini understood */}
-        {searchResult?.query_parsed && !searching && (
-          <div className="flex-shrink-0 px-5 py-2 flex flex-wrap gap-1.5">
-            {searchResult.query_parsed.van_mode && (
-              <span className="px-2 py-0.5 rounded-md text-[10px]" style={{ background: "rgba(74,222,128,0.1)", color: "#4ade80", border: "1px solid rgba(74,222,128,0.2)" }}>
-                🚐 Van mode
-              </span>
-            )}
-            {searchResult.query_parsed.parking_type && (
-              <span className="px-2 py-0.5 rounded-md text-[10px]" style={{ background: "var(--surface)", color: "var(--text-3)", border: "1px solid var(--border)" }}>
-                {searchResult.query_parsed.parking_type}
-              </span>
-            )}
-            {searchResult.query_parsed.filters.map((f) => (
-              <span key={f} className="px-2 py-0.5 rounded-md text-[10px]" style={{ background: "var(--surface)", color: "var(--text-3)", border: "1px solid var(--border)" }}>
-                {f.replace(/_/g, " ")}
-              </span>
-            ))}
-            {searchResult.query_parsed.radius_m < 500 && (
-              <span className="px-2 py-0.5 rounded-md text-[10px]" style={{ background: "var(--surface)", color: "var(--text-3)", border: "1px solid var(--border)" }}>
-                {searchResult.query_parsed.radius_m}m radius
-              </span>
-            )}
-          </div>
-        )}
+        {/* Quick filters — shown when there are results */}
+        {spots.length > 0 && !searching && (() => {
+          const filters = [
+            { key: "van", label: "🚐 Van", count: spots.filter(s => s.van_accessible === true).length },
+            { key: "free", label: "Free", count: spots.filter(s => s.fee === false).length },
+            { key: "covered", label: "Covered", count: spots.filter(s => s.covered === true).length },
+            { key: "verified", label: "Verified", count: spots.filter(s => !!s.verified_at || !!s.check_date_wheelchair).length },
+          ].filter(f => f.count > 0);
+          if (filters.length === 0) return null;
+          return (
+            <div className="flex-shrink-0 px-4 py-2 flex flex-wrap gap-1.5">
+              {filters.map(({ key, label, count }) => {
+                const active = activeFilters.has(key);
+                return (
+                  <button
+                    key={key}
+                    onClick={() => toggleFilter(key)}
+                    className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs transition-all"
+                    style={{
+                      background: active ? "rgba(74,222,128,0.15)" : "var(--surface)",
+                      color: active ? "#4ade80" : "var(--text-3)",
+                      border: `1px solid ${active ? "rgba(74,222,128,0.4)" : "var(--border)"}`,
+                    }}
+                  >
+                    {label}
+                    <span className="opacity-60">{count}</span>
+                  </button>
+                );
+              })}
+              {activeFilters.size > 0 && (
+                <button
+                  onClick={() => setActiveFilters(new Set())}
+                  className="px-2.5 py-1 rounded-lg text-xs transition-all"
+                  style={{ color: "var(--text-3)", border: "1px solid var(--border)" }}
+                >
+                  Clear
+                </button>
+              )}
+            </div>
+          );
+        })()}
 
         {/* Scrollable content */}
         <div className="flex-1 overflow-y-auto">
           {tab === "search" ? (
             <>
-              {/* Route panel when active */}
-              {(route || routing || routeError) && selectedSpot && (
-                <RoutePanel
-                  route={route}
-                  loading={routing}
-                  error={routeError}
-                  spot={selectedSpot}
-                  onClose={() => { setRoute(null); setRouteError(null); }}
-                />
-              )}
-
               {/* Spot list */}
               {!searching && (
                 <SpotList
-                  spots={spots}
+                  spots={displaySpots}
                   selectedSpot={selectedSpot}
                   favoriteIds={favoriteIds}
                   spotCommunity={spotCommunity}
@@ -383,7 +425,9 @@ export default function AppShell() {
             style={{ borderTop: "1px solid var(--border)" }}
           >
             <span className="text-xs" style={{ color: "var(--text-3)" }}>
-              {spots.length} spot{spots.length !== 1 ? "s" : ""} found
+              {displaySpots.length !== spots.length
+                ? `${displaySpots.length} of ${spots.length} spots`
+                : `${spots.length} spot${spots.length !== 1 ? "s" : ""} found`}
             </span>
             <button
               onClick={handleShowIsochrone}
@@ -414,9 +458,9 @@ export default function AppShell() {
           <MapView
             center={mapCenter}
             zoom={selectedSpot ? 17 : geocoded ? 15 : 12}
-            spots={spots}
+            spots={displaySpots}
             selectedSpot={selectedSpot}
-            route={route}
+            route={null}
             isochrone={isochrone}
             userLocation={userLocation}
             onSpotClick={handleSpotSelect}

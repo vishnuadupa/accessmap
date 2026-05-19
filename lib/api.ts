@@ -33,8 +33,8 @@ async function get<T>(path: string, params: Record<string, string>): Promise<T> 
 }
 
 export const api = {
-  search: (query: string, session_id: string) =>
-    post<SearchResponse>("/api/search", { query, session_id }),
+  search: (query: string, session_id: string, coords?: { lat: number; lon: number }) =>
+    post<SearchResponse>("/api/search", { query, session_id, ...coords }),
 
   route: (origin: [number, number], destination: [number, number], spot_id: string) =>
     post<RouteResult>("/api/route", { origin, destination, spot_id }),

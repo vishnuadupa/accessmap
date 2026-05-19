@@ -20,6 +20,9 @@ import type { SearchResponse, SpotFilter, ParsedIntent } from "@/types";
 const SearchSchema = z.object({
   query: z.string().min(1).max(200),
   session_id: z.string().uuid(),
+  // Optional: client-supplied coordinates skip geocoding (used for "Near Me")
+  lat: z.number().min(-90).max(90).optional(),
+  lon: z.number().min(-180).max(180).optional(),
 });
 
 function getHashedIp(req: NextRequest): string {
@@ -45,7 +48,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     return NextResponse.json({ error: "Invalid request" }, { status: 400 });
   }
 
-  const { query, session_id } = parsed.data;
+  const { query, session_id, lat: coordLat, lon: coordLon } = parsed.data;
 
   // ── 2. IP-level rate limit (H2 FIX) ───────────────────────────────────────
   // Prevents bots generating new UUIDs to bypass per-session limits
@@ -83,31 +86,28 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   }
 
   // ── 5. Geocode location ────────────────────────────────────────────────────
-  // Use ORS first; fall back to Nominatim only when ORS returns a low-precision
-  // centroid (which often matches the wrong region for landmark queries, e.g.
-  // "Central Park New York" → Bethpage NY). Running both in parallel would burn
-  // Nominatim's 1 req/s quota before the parking-search fallback can use it.
-  // Strip mobility/parking noise words from the location string before geocoding.
-  // Gemini normally returns a clean "Trump Tower, Chicago" — stripping is a no-op.
-  // When Gemini fails intent.location = raw query ("wheelchair parking near trump towers"),
-  // and stripping prevents the geocoder from matching on "parking" or "near" words.
-  // "wheel chair" (two words) and "wheel-chair" must be caught separately from "wheelchair"
-  const PARKING_NOISE = /\bwheel[\s-]?chair\b|\b(accessible|disabled|handicap|parking|near|close to|next to|around|by|spaces?|spots?)\b/gi;
-  const rawLocation = intent.location || query;
-  const locationQuery = rawLocation.replace(PARKING_NOISE, " ").replace(/\s{2,}/g, " ").trim() || rawLocation;
-  const HIGH_PRECISION = new Set(["point", "interpolated", "street"]);
-  const orsGeo = await geocode(locationQuery);
-  let geocoded =
-    orsGeo && HIGH_PRECISION.has(orsGeo.accuracy ?? "")
-      ? orsGeo
-      : (await geocodeFallback(locationQuery)) ?? orsGeo;
+  let geocoded: Awaited<ReturnType<typeof geocode>> = null;
+
+  if (coordLat !== undefined && coordLon !== undefined) {
+    // Client supplied coordinates (Near Me) — skip geocoding entirely
+    geocoded = { lat: coordLat, lon: coordLon, display_name: "your location", confidence: 1, accuracy: "point" };
+  } else {
+    // Strip mobility/parking noise before geocoding so "wheelchair parking near X" → "X"
+    const PARKING_NOISE = /\bwheel[\s-]?chair\b|\b(accessible|disabled|handicap|parking|near|close to|next to|around|by|spaces?|spots?)\b/gi;
+    const rawLocation = intent.location || query;
+    const locationQuery = rawLocation.replace(PARKING_NOISE, " ").replace(/\s{2,}/g, " ").trim() || rawLocation;
+    const HIGH_PRECISION = new Set(["point", "interpolated", "street"]);
+    const orsGeo = await geocode(locationQuery);
+    geocoded =
+      orsGeo && HIGH_PRECISION.has(orsGeo.accuracy ?? "")
+        ? orsGeo
+        : (await geocodeFallback(locationQuery)) ?? orsGeo;
+  }
 
   if (!geocoded) {
     return NextResponse.json(
       {
         error: "location_not_found",
-        // Safe to echo locationQuery here — it's already been through Gemini
-        // validation and sanitization. Cap length for safety.
         message: `Could not locate that address. Try a more specific landmark or postcode.`,
         query_parsed: intent,
       },

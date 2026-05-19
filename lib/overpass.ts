@@ -121,11 +121,12 @@ function parseTag(tags: Record<string, string>): Partial<ParkingSpot> {
     covered: covered === "yes" ? true : covered === "no" ? false : null,
     lit: lit === "yes" ? true : lit === "no" ? false : null,
     access: sanitizeTag(tags["access"], 30),
-    // height restriction — critical for vans (underground garages often 2.1m, vans need 2.4m+)
     height: sanitizeTag(tags["height"] ?? tags["maxheight"], 20),
     ramp_wheelchair: rampRaw === "yes" ? true : rampRaw === "no" ? false : null,
     address: rawAddress ? sanitizeTag(rawAddress, 100) : null,
     level: sanitizeTag(tags["level"], 10),
+    phone: sanitizeTag(tags["phone"] ?? tags["contact:phone"], 30),
+    website: sanitizeTag(tags["website"] ?? tags["contact:website"] ?? tags["url"], 100),
   };
 }
 

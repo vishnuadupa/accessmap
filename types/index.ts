@@ -43,6 +43,8 @@ export interface ParkingSpot {
   address: string | null;
   // OSM level — floor number for multi-storey lots (e.g. 0, -1)
   level: string | null;
+  phone: string | null;
+  website: string | null;
   report_flags: number;
   cached_at?: Date;
   cache_key?: string;

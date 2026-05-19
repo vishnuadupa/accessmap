@@ -247,9 +247,9 @@ export default function SpotCard({
 
         {/* Footer row */}
         <div className="flex items-center justify-between">
-          <div className="flex items-center gap-1.5">
+          <div className="flex items-center gap-1.5 flex-wrap">
             <div
-              className="w-1.5 h-1.5 rounded-full"
+              className="w-1.5 h-1.5 rounded-full flex-shrink-0"
               style={{ background: verification.color }}
             />
             <span className="text-xs" style={{ color: verification.color }}>
@@ -261,13 +261,28 @@ export default function SpotCard({
               </span>
             )}
           </div>
-
           {spot.maxstay && (
             <span className="text-xs" style={{ color: "var(--text-3)" }}>
               ⏱ {spot.maxstay}
             </span>
           )}
         </div>
+
+        {/* No-data nudge — shown inline so card is still actionable */}
+        {verification.label === "No accessibility data" && (
+          <div className="mt-2.5 flex items-center justify-between">
+            <span className="text-xs" style={{ color: "var(--text-3)" }}>
+              No one has verified accessibility here yet.
+            </span>
+            <button
+              onClick={(e) => { e.stopPropagation(); onReport(); }}
+              className="text-xs px-2 py-0.5 rounded-md transition-all"
+              style={{ color: "var(--accent)", border: "1px solid rgba(74,222,128,0.3)" }}
+            >
+              Be first →
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Community report breakdown (30-day) */}
@@ -297,28 +312,55 @@ export default function SpotCard({
 
       {/* Expanded actions */}
       {selected && (
-        <div
-          className="flex gap-2 px-4 pb-4"
-          onClick={(e) => e.stopPropagation()}
-        >
-          <button
-            onClick={onRoute}
-            className="flex-1 py-2 rounded-lg text-sm font-medium transition-all"
-            style={{ background: "var(--accent)", color: "#0c0c0c" }}
-            onMouseEnter={(e) => (e.currentTarget.style.background = "#86efac")}
-            onMouseLeave={(e) => (e.currentTarget.style.background = "var(--accent)")}
-          >
-            Get Route
-          </button>
-          <button
-            onClick={onReport}
-            className="py-2 px-3 rounded-lg text-sm transition-all"
-            style={{ background: "var(--surface-2)", border: "1px solid var(--border)", color: "var(--text-2)" }}
-            onMouseEnter={(e) => (e.currentTarget.style.borderColor = "rgba(248,113,113,0.4)")}
-            onMouseLeave={(e) => (e.currentTarget.style.borderColor = "var(--border)")}
-          >
-            Report
-          </button>
+        <div className="px-4 pb-4 space-y-2" onClick={(e) => e.stopPropagation()}>
+          {/* Phone / website call-ahead row */}
+          {(spot.phone || spot.website) && (
+            <div className="flex gap-2">
+              {spot.phone && (
+                <a
+                  href={`tel:${spot.phone}`}
+                  className="flex items-center gap-1.5 flex-1 py-2 rounded-lg text-xs justify-center transition-all"
+                  style={{ background: "var(--surface-2)", border: "1px solid var(--border)", color: "var(--text-2)" }}
+                >
+                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07A19.5 19.5 0 013.07 9.63 19.79 19.79 0 01.03 1a2 2 0 012-2h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L6.91 6.91a16 16 0 006.18 6.18l1.27-1.27a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 16.92z"/></svg>
+                  Call ahead
+                </a>
+              )}
+              {spot.website && (
+                <a
+                  href={spot.website.startsWith("http") ? spot.website : `https://${spot.website}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-1.5 flex-1 py-2 rounded-lg text-xs justify-center transition-all"
+                  style={{ background: "var(--surface-2)", border: "1px solid var(--border)", color: "var(--text-2)" }}
+                >
+                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 014 10 15.3 15.3 0 01-4 10 15.3 15.3 0 01-4-10 15.3 15.3 0 014-10z"/></svg>
+                  Website
+                </a>
+              )}
+            </div>
+          )}
+          <div className="flex gap-2">
+            <button
+              onClick={onRoute}
+              className="flex-1 py-2 rounded-lg text-sm font-medium transition-all flex items-center justify-center gap-1.5"
+              style={{ background: "var(--accent)", color: "#0c0c0c" }}
+              onMouseEnter={(e) => (e.currentTarget.style.background = "#86efac")}
+              onMouseLeave={(e) => (e.currentTarget.style.background = "var(--accent)")}
+            >
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"/></svg>
+              Directions in Google Maps
+            </button>
+            <button
+              onClick={onReport}
+              className="py-2 px-3 rounded-lg text-sm transition-all"
+              style={{ background: "var(--surface-2)", border: "1px solid var(--border)", color: "var(--text-2)" }}
+              onMouseEnter={(e) => (e.currentTarget.style.borderColor = "rgba(248,113,113,0.4)")}
+              onMouseLeave={(e) => (e.currentTarget.style.borderColor = "var(--border)")}
+            >
+              Report
+            </button>
+          </div>
         </div>
       )}
     </div>

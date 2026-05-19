@@ -45,6 +45,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   const parsed = SearchSchema.safeParse(body);
   if (!parsed.success) {
     // H1 FIX: never leak Zod field details — tells attackers the exact schema
+    console.error("[search] Validation error:", parsed.error.format());
     return NextResponse.json({ error: "Invalid request" }, { status: 400 });
   }
 

@@ -31,6 +31,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   const parsed = FavoriteSchema.safeParse(body);
   if (!parsed.success) {
     // H1 FIX: never return Zod field details
+    console.error("[favorite] Validation error:", parsed.error.format());
     return NextResponse.json({ error: "Invalid request" }, { status: 400 });
   }
 

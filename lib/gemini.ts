@@ -8,7 +8,8 @@ if (!API_KEY) {
 }
 
 const genAI = new GoogleGenerativeAI(API_KEY ?? "");
-const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+// gemini-2.5-flash free tier: 20 req/day. gemini-2.0-flash free tier: 200 req/day.
+const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
 
 // Strip characters that could break out of prompt context or inject instructions.
 // Strips: quotes, backticks, angle brackets, XML-like tags.

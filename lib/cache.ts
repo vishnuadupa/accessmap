@@ -174,7 +174,7 @@ export async function recordIpRequest(hashedIp: string): Promise<void> {
           },
         },
       ],
-      { upsert: true }
+      { upsert: true, updatePipeline: true }
     );
   } catch {
     // Non-fatal
@@ -245,7 +245,7 @@ export async function recordGeminiCall(session_id: string): Promise<void> {
           },
         },
       ],
-      { upsert: true }
+      { upsert: true, updatePipeline: true }
     );
   } catch (err) {
     console.warn("Session record failed:", err);

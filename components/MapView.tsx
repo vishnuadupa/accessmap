@@ -2,7 +2,6 @@
 import { useEffect, useRef } from "react";
 import { MapContainer, TileLayer, Marker, Popup, Polyline, GeoJSON, Circle, useMap } from "react-leaflet";
 import L from "leaflet";
-import "leaflet/dist/leaflet.css";
 import type { ParkingSpot, RouteResult, IsochroneResult } from "@/types";
 
 // Fix default marker icon (webpack issue with Leaflet)
@@ -75,7 +74,7 @@ function MapController({ center, zoom }: { center: [number, number]; zoom: numbe
   return null;
 }
 
-interface Props {
+export interface Props {
   center: [number, number];
   zoom: number;
   spots: ParkingSpot[];

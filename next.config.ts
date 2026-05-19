@@ -20,7 +20,7 @@ const securityHeaders = [
     key: "Content-Security-Policy",
     value: [
       "default-src 'self'",
-      "script-src 'self' 'unsafe-eval'", // unsafe-eval needed by Leaflet in dev
+      "script-src 'self' 'unsafe-inline' 'unsafe-eval'", // unsafe-inline needed for Next.js inline scripts (RSC streaming, __next_r)
       "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com", // Leaflet uses inline styles
       "font-src 'self' https://fonts.gstatic.com",
       "img-src 'self' data: https://*.tile.openstreetmap.org https://*.openstreetmap.org https://*.basemaps.cartocdn.com https://unpkg.com",

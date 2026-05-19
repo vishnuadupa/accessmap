@@ -15,11 +15,18 @@ interface Props {
 function verificationInfo(spot: ParkingSpot) {
   const d = spot.verified_at
     ?? (spot.check_date_wheelchair ? new Date(spot.check_date_wheelchair) : null);
-  if (!d) return { label: "Unverified", color: "#555" };
-  const days = Math.floor((Date.now() - new Date(d).getTime()) / 86400000);
-  if (days < 30) return { label: `Verified ${days}d ago`, color: "#4ade80" };
-  if (days < 180) return { label: `Verified ${Math.floor(days / 30)}mo ago`, color: "#fb923c" };
-  return { label: `Last verified ${Math.floor(days / 30)}mo ago`, color: "#f87171" };
+  if (d) {
+    const days = Math.floor((Date.now() - new Date(d).getTime()) / 86400000);
+    if (days < 30) return { label: `Verified ${days}d ago`, color: "#4ade80" };
+    if (days < 180) return { label: `Verified ${Math.floor(days / 30)}mo ago`, color: "#fb923c" };
+    return { label: `Last verified ${Math.floor(days / 30)}mo ago`, color: "#f87171" };
+  }
+  // Distinguish: has OSM accessibility tags (but no recent ground-truth) vs completely untagged
+  const hasTag = spot.wheelchair === "yes" || spot.wheelchair === "limited"
+    || spot.van_accessible === true
+    || (spot.capacity_disabled !== null && spot.capacity_disabled > 0);
+  if (hasTag) return { label: "OSM tagged · unverified", color: "#fb923c" };
+  return { label: "No accessibility data", color: "#555" };
 }
 
 function parkingTypeLabel(type: ParkingSpot["parking_type"]) {

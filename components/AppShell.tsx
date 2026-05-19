@@ -1,6 +1,5 @@
 "use client";
-import { useState, useEffect, useCallback } from "react";
-import dynamic from "next/dynamic";
+import { useState, useEffect, useCallback, type ComponentType } from "react";
 import { useSession } from "@/hooks/useSession";
 import { api } from "@/lib/api";
 import type {
@@ -10,29 +9,33 @@ import type {
   IsochroneResult,
   SavedFavorite,
 } from "@/types";
+import type { Props as MapViewProps } from "./MapView";
 import SearchBar from "./SearchBar";
 import SpotList from "./SpotList";
 import RoutePanel from "./RoutePanel";
 import ReportModal from "./ReportModal";
 import FavoritesPanel from "./FavoritesPanel";
 
-const MapView = dynamic(() => import("./MapView"), {
-  ssr: false,
-  loading: () => (
-    <div className="flex-1 flex items-center justify-center" style={{ background: "#0c0c0c" }}>
-      <div className="text-center">
-        <div className="w-8 h-8 rounded-full border-2 border-accent border-t-transparent animate-spin mx-auto mb-3"
-          style={{ borderColor: "var(--accent)", borderTopColor: "transparent" }} />
-        <p className="text-xs" style={{ color: "var(--text-3)" }}>Loading map…</p>
-      </div>
+const MapLoading = () => (
+  <div className="flex-1 flex items-center justify-center" style={{ background: "#0c0c0c", width: "100%", height: "100%" }}>
+    <div className="text-center">
+      <div className="w-8 h-8 rounded-full border-2 border-t-transparent animate-spin mx-auto mb-3"
+        style={{ borderColor: "var(--accent)", borderTopColor: "transparent" }} />
+      <p className="text-xs" style={{ color: "var(--text-3)" }}>Loading map…</p>
     </div>
-  ),
-});
+  </div>
+);
 
 type Tab = "search" | "favorites";
 
 export default function AppShell() {
   const sessionId = useSession();
+
+  // Lazy-load MapView manually to avoid Turbopack dynamic-import CSS chunk hang
+  const [MapView, setMapView] = useState<ComponentType<MapViewProps> | null>(null);
+  useEffect(() => {
+    import("./MapView").then((m) => setMapView(() => m.default));
+  }, []);
 
   // Search state
   const [searchResult, setSearchResult] = useState<SearchResponse | null>(null);
@@ -407,16 +410,20 @@ export default function AppShell() {
 
       {/* ── Map ─────────────────────────────────────────────────────────── */}
       <div className="flex-1 relative" style={{ height: "100vh" }}>
-        <MapView
-          center={mapCenter}
-          zoom={selectedSpot ? 17 : geocoded ? 15 : 12}
-          spots={spots}
-          selectedSpot={selectedSpot}
-          route={route}
-          isochrone={isochrone}
-          userLocation={userLocation}
-          onSpotClick={handleSpotSelect}
-        />
+        {MapView ? (
+          <MapView
+            center={mapCenter}
+            zoom={selectedSpot ? 17 : geocoded ? 15 : 12}
+            spots={spots}
+            selectedSpot={selectedSpot}
+            route={route}
+            isochrone={isochrone}
+            userLocation={userLocation}
+            onSpotClick={handleSpotSelect}
+          />
+        ) : (
+          <MapLoading />
+        )}
       </div>
 
       {/* ── Report modal ─────────────────────────────────────────────────── */}

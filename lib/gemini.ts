@@ -8,8 +8,9 @@ if (!API_KEY) {
 }
 
 const genAI = new GoogleGenerativeAI(API_KEY ?? "");
-// gemini-2.5-flash free tier: 20 req/day. gemini-2.0-flash free tier: 200 req/day.
-const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
+// Free tier: 20 req/day. We use Gemini only for parseIntent (1 call/search).
+// narrateResults was the second call per search — now replaced with a template.
+const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
 
 // Strip characters that could break out of prompt context or inject instructions.
 // Strips: quotes, backticks, angle brackets, XML-like tags.

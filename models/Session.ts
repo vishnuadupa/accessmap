@@ -19,7 +19,6 @@ const SessionSchema = new Schema<SessionDocument>({
   last_active: { type: Date, default: Date.now },
 });
 
-SessionSchema.index({ session_id: 1 }, { unique: true });
 // TTL: auto-delete inactive sessions after 90 days.
 // IP rate-limit records (session_id prefix "ip:") also cleaned up here.
 SessionSchema.index({ last_active: 1 }, { expireAfterSeconds: 7776000 });

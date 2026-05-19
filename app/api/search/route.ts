@@ -1,7 +1,9 @@
 import crypto from "crypto";
 import { NextRequest, NextResponse } from "next/server";
+
+export const maxDuration = 45; // seconds — needs Vercel Pro; Hobby cap is 10s
 import { z } from "zod";
-import { parseIntent, narrateResults, stripDangerous, sanitizeQuery } from "@/lib/gemini";
+import { parseIntent, stripDangerous, sanitizeQuery } from "@/lib/gemini";
 import { geocode, geocodeFallback } from "@/lib/ors";
 import { queryWheelchairParking } from "@/lib/overpass";
 import {
@@ -75,15 +77,30 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       intent = await parseIntent(query);
       await recordGeminiCall(session_id);
     } catch (err) {
-      console.error("Gemini parseIntent failed:", err);
-      // Continue with raw query — don't block user
+      const e = err as { status?: number; message?: string };
+      console.error(`Gemini parseIntent failed [${e.status ?? "?"}]: ${String(e.message ?? err).slice(0, 200)}`);
     }
   }
 
   // ── 5. Geocode location ────────────────────────────────────────────────────
-  const locationQuery = intent.location || query;
-  let geocoded = await geocode(locationQuery);
-  if (!geocoded) geocoded = await geocodeFallback(locationQuery);
+  // Use ORS first; fall back to Nominatim only when ORS returns a low-precision
+  // centroid (which often matches the wrong region for landmark queries, e.g.
+  // "Central Park New York" → Bethpage NY). Running both in parallel would burn
+  // Nominatim's 1 req/s quota before the parking-search fallback can use it.
+  // Strip mobility/parking noise words from the location string before geocoding.
+  // Gemini normally returns a clean "Trump Tower, Chicago" — stripping is a no-op.
+  // When Gemini fails intent.location = raw query ("wheelchair parking near trump towers"),
+  // and stripping prevents the geocoder from matching on "parking" or "near" words.
+  // "wheel chair" (two words) and "wheel-chair" must be caught separately from "wheelchair"
+  const PARKING_NOISE = /\bwheel[\s-]?chair\b|\b(accessible|disabled|handicap|parking|near|close to|next to|around|by|spaces?|spots?)\b/gi;
+  const rawLocation = intent.location || query;
+  const locationQuery = rawLocation.replace(PARKING_NOISE, " ").replace(/\s{2,}/g, " ").trim() || rawLocation;
+  const HIGH_PRECISION = new Set(["point", "interpolated", "street"]);
+  const orsGeo = await geocode(locationQuery);
+  let geocoded =
+    orsGeo && HIGH_PRECISION.has(orsGeo.accuracy ?? "")
+      ? orsGeo
+      : (await geocodeFallback(locationQuery)) ?? orsGeo;
 
   if (!geocoded) {
     return NextResponse.json(
@@ -98,6 +115,9 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     );
   }
 
+  console.log(`[search] intent.location="${intent.location}" radius=${intent.radius_m} van=${intent.van_mode} filters=${JSON.stringify(intent.filters)}`);
+  console.log(`[search] geocoded: lat=${geocoded.lat}, lon=${geocoded.lon}, name="${geocoded.display_name}"`);
+
   // ── 6. Check spot cache ────────────────────────────────────────────────────
   const cachedSpots = await getCachedSpots(
     geocoded.lat,
@@ -108,19 +128,19 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   let spots = cachedSpots;
   let cache_hit = true;
   let fallback_used = false;
-
   if (!spots) {
     cache_hit = false;
     try {
+      const t0 = Date.now();
       const result = await queryWheelchairParking(geocoded, intent.radius_m);
       spots = result.spots;
       fallback_used = result.fallback_used;
-      // M5 FIX: surface fallback_used so frontend can warn the user
+      console.log(`[search] Overpass OK: ${spots.length} spots, fallback=${fallback_used}, ${Date.now()-t0}ms`);
       setCachedSpots(geocoded.lat, geocoded.lon, intent.radius_m, spots).catch(
         () => {}
       );
     } catch (err) {
-      console.error("Overpass query failed:", err);
+      console.error("[search] Overpass query failed:", err);
       spots = [];
     }
   }
@@ -147,6 +167,19 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       ];
     }
 
+    // Always float confirmed/tagged spots above completely unknown ones,
+    // preserving distance order within each tier.
+    const accessTier = (s: typeof filtered[0]) => {
+      if (s.wheelchair === "yes" || s.van_accessible === true) return 3;
+      if (s.wheelchair === "limited") return 2;
+      if (s.capacity_disabled !== null && s.capacity_disabled > 0) return 1;
+      return 0;
+    };
+    filtered.sort((a, b) => {
+      const diff = accessTier(b) - accessTier(a);
+      return diff !== 0 ? diff : (a.distance_m ?? 0) - (b.distance_m ?? 0);
+    });
+
     if (filtered.length > 0) spots = filtered;
   }
 
@@ -155,24 +188,25 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   // swallow errors). We catch here and use a fallback string WITHOUT counting
   // the call against the quota.
   let narration = "";
-  if (geminiAllowed && spots) {
-    try {
-      narration = await narrateResults(spots, geocoded.display_name);
-      await recordGeminiCall(session_id);
-    } catch {
-      // Fix: sanitize display_name — comes from external geocoding service
-      const safeName = stripDangerous(geocoded.display_name).slice(0, 100);
-      narration =
-        spots.length > 0
-          ? `Found ${spots.length} parking option${spots.length > 1 ? "s" : ""} near ${safeName}.${fallback_used ? " Accessibility status may not be confirmed for all spots." : ""}`
-          : `No accessible parking found near ${safeName}.`;
+  // Narration uses a template — saves the second Gemini call per search.
+  // This doubles our daily Gemini budget (now 1 call/search for parseIntent only).
+  const safeName = stripDangerous(geocoded.display_name).slice(0, 100);
+  if (spots && spots.length > 0) {
+    const wheelchairCount = spots.filter((s) => s.wheelchair === "yes").length;
+    const taggedCount = spots.filter((s) =>
+      s.wheelchair === "yes" || s.wheelchair === "limited" ||
+      s.van_accessible === true || (s.capacity_disabled !== null && (s.capacity_disabled ?? 0) > 0)
+    ).length;
+    const verifiedNote = fallback_used ? " Accessibility status may not be confirmed for all spots." : "";
+    if (wheelchairCount > 0) {
+      narration = `Found ${spots.length} parking option${spots.length > 1 ? "s" : ""} near ${safeName}, including ${wheelchairCount} confirmed wheelchair-accessible.${verifiedNote}`;
+    } else if (taggedCount > 0) {
+      narration = `Found ${spots.length} parking option${spots.length > 1 ? "s" : ""} near ${safeName}. ${taggedCount} ha${taggedCount === 1 ? "s" : "ve"} accessibility tags in OpenStreetMap — call ahead to confirm current access.${verifiedNote}`;
+    } else {
+      narration = `Found ${spots.length} nearby parking option${spots.length > 1 ? "s" : ""} near ${safeName}, but none have accessibility data in OpenStreetMap. Call ahead or check Google Maps for accessible space details.${verifiedNote}`;
     }
   } else {
-    const safeName = stripDangerous(geocoded.display_name).slice(0, 100);
-    narration =
-      spots && spots.length > 0
-        ? `Found ${spots.length} parking option${spots.length > 1 ? "s" : ""} near ${safeName}.${fallback_used ? " Accessibility status may not be confirmed for all spots." : ""}`
-        : `No accessible parking found near ${safeName}.`;
+    narration = `No confirmed wheelchair-accessible parking was found near ${safeName}. Try widening your search or check nearby garages directly.`;
   }
 
   // ── 9. Record query history — sanitize before storing (goes to DB, may be displayed)

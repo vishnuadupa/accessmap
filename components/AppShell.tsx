@@ -150,7 +150,11 @@ export default function AppShell() {
     // Optimistic update
     setFavoriteIds((prev) => {
       const next = new Set(prev);
-      isFav ? next.delete(spot.osm_id) : next.add(spot.osm_id);
+      if (isFav) {
+        next.delete(spot.osm_id);
+      } else {
+        next.add(spot.osm_id);
+      }
       return next;
     });
     try {
@@ -167,7 +171,11 @@ export default function AppShell() {
       // Revert
       setFavoriteIds((prev) => {
         const next = new Set(prev);
-        isFav ? next.add(spot.osm_id) : next.delete(spot.osm_id);
+        if (isFav) {
+          next.add(spot.osm_id);
+        } else {
+          next.delete(spot.osm_id);
+        }
         return next;
       });
     }
@@ -184,7 +192,7 @@ export default function AppShell() {
     finally { setIsochroneLoading(false); }
   }, [searchResult]);
 
-  const spots = searchResult?.spots ?? [];
+  const spots = useMemo(() => searchResult?.spots ?? [], [searchResult]);
 
   const displaySpots = useMemo(() => {
     if (activeFilters.size === 0) return spots;
@@ -200,7 +208,11 @@ export default function AppShell() {
   const toggleFilter = useCallback((f: string) => {
     setActiveFilters((prev) => {
       const next = new Set(prev);
-      next.has(f) ? next.delete(f) : next.add(f);
+      if (next.has(f)) {
+        next.delete(f);
+      } else {
+        next.add(f);
+      }
       return next;
     });
   }, []);

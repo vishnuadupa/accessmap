@@ -7,8 +7,7 @@ import { stripDangerous } from "@/lib/gemini";
 
 const FavoriteSchema = z.object({
   session_id: z.string().uuid(),
-  // M1 FIX: add same regex guard as /api/report for consistency
-  spot_id: z.string().min(1).max(50).regex(/^[0-9a-zA-Z_-]+$/),
+  spot_id: z.string().min(1).max(50).regex(/^[0-9a-zA-Z_-]+$/, "Invalid spot ID format"),
   action: z.enum(["save", "remove"]),
   // M2 FIX: spot_name comes from OSM data or frontend — sanitize before storing
   spot_name: z.string().max(200).optional(),

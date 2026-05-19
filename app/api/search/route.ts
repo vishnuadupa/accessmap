@@ -15,7 +15,7 @@ import {
   checkIpRateLimit,
   recordIpRequest,
 } from "@/lib/cache";
-import type { SearchResponse, SpotFilter, ParsedIntent } from "@/types";
+import type { SearchResponse, ParsedIntent } from "@/types";
 
 const SearchSchema = z.object({
   query: z.string().min(1).max(200),

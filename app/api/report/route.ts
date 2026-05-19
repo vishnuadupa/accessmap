@@ -77,11 +77,12 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     // M3 FIX: sanitize free-text note before storing — user-supplied, goes to DB and frontend
     const safeNote = note ? stripDangerous(note).slice(0, 200) || null : null;
 
+    // Create the report with the sanitized note
     await ReportModel.create({
       session_id,
       spot_id,
       status,
-      note: safeNote,
+      note: safeNote, // Explicitly pass the sanitized safeNote here
       created_at: new Date(),
     });
 

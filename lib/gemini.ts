@@ -1,5 +1,5 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
-import type { ParsedIntent, ParkingSpot, SpotFilter } from "@/types";
+import type { ParsedIntent, ParkingSpot } from "@/types";
 
 const API_KEY = process.env.GEMINI_API_KEY;
 
@@ -144,9 +144,9 @@ export async function narrateResults(
   // Malicious OSM contributors could add prompt injection instructions to spot names.
   const top3 = spots.slice(0, 3).map((s) => ({
     name: stripDangerous(s.name).slice(0, 80),
-    wheelchair: s.wheelchair,
-    van_accessible: s.van_accessible,
-    parking_type: s.parking_type,
+    wheelchair: s.wheelchair ? stripDangerous(s.wheelchair) : s.wheelchair,
+    van_accessible: typeof s.van_accessible === "string" ? stripDangerous(s.van_accessible) : s.van_accessible,
+    parking_type: s.parking_type ? stripDangerous(s.parking_type) : s.parking_type,
     opening_hours: s.opening_hours ? stripDangerous(s.opening_hours).slice(0, 60) : null,
     maxstay: s.maxstay ? stripDangerous(s.maxstay).slice(0, 30) : null,
     distance_m: typeof s.distance_m === "number" ? s.distance_m : "unknown",

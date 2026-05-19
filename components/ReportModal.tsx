@@ -102,8 +102,8 @@ export default function ReportModal({ spot, sessionId, onClose }: Props) {
             <p className="text-sm font-semibold" style={{ color: "var(--text)" }}>Report Spot</p>
             <p className="text-xs mt-0.5 truncate max-w-[220px]" style={{ color: "var(--text-3)" }}>{spot.name}</p>
           </div>
-          <button onClick={onClose} style={{ color: "var(--text-3)" }}>
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5}>
+          <button onClick={onClose} style={{ color: "var(--text-3)" }} aria-label="Close report modal" title="Close">
+            <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5}>
               <path strokeLinecap="round" d="M18 6L6 18M6 6l12 12" />
             </svg>
           </button>
@@ -144,6 +144,7 @@ export default function ReportModal({ spot, sessionId, onClose }: Props) {
                     background: selected === opt.value ? `${opt.color}12` : "var(--surface)",
                     border: `1px solid ${selected === opt.value ? `${opt.color}40` : "var(--border)"}`,
                   }}
+                  aria-pressed={selected === opt.value}
                 >
                   <span className="text-sm mt-0.5 flex-shrink-0">{opt.icon}</span>
                   <div className="min-w-0">

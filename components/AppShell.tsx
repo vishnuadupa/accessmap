@@ -230,6 +230,8 @@ export default function AppShell() {
                     color: tab === t ? "var(--text)" : "var(--text-3)",
                     border: tab === t ? "1px solid var(--border)" : "1px solid transparent",
                   }}
+                  aria-pressed={tab === t}
+                  aria-label={t === "search" ? "Search tab" : `Favorites tab, ${favorites.length} saved`}
                 >
                   {t === "search" ? "Search" : `Saved (${favorites.length})`}
                 </button>
@@ -394,11 +396,13 @@ export default function AppShell() {
                 color: isochrone ? "var(--accent)" : "var(--text-2)",
                 border: `1px solid ${isochrone ? "rgba(74,222,128,0.3)" : "var(--border)"}`,
               }}
+              aria-pressed={!!isochrone}
+              aria-label={isochrone ? "Hide 5-minute wheelchair reachability polygon" : "Show 5-minute wheelchair reachability polygon"}
             >
               {isochroneLoading ? (
-                <div className="w-3 h-3 rounded-full border border-current border-t-transparent animate-spin" />
+                <div className="w-3 h-3 rounded-full border border-current border-t-transparent animate-spin" aria-hidden="true" />
               ) : (
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+                <svg aria-hidden="true" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
                   <circle cx="12" cy="12" r="10" /><circle cx="12" cy="12" r="4" />
                 </svg>
               )}

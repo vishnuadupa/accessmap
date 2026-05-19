@@ -44,9 +44,10 @@ export default function SearchBar({ onSearch, loading, history }: Props) {
           <div
             className="w-4 h-4 rounded-full border-2 border-t-transparent animate-spin flex-shrink-0"
             style={{ borderColor: "var(--accent)", borderTopColor: "transparent" }}
+            aria-hidden="true"
           />
         ) : (
-          <svg className="flex-shrink-0" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} style={{ color: "var(--text-3)" }}>
+          <svg aria-hidden="true" className="flex-shrink-0" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} style={{ color: "var(--text-3)" }}>
             <circle cx="11" cy="11" r="8" /><path strokeLinecap="round" d="M21 21l-4.35-4.35" />
           </svg>
         )}
@@ -60,6 +61,7 @@ export default function SearchBar({ onSearch, loading, history }: Props) {
           placeholder="e.g. van accessible near UCSF"
           className="flex-1 bg-transparent text-sm outline-none placeholder:text-[var(--text-3)]"
           style={{ color: "var(--text)" }}
+          aria-label="Search for parking spots"
         />
 
         {value && (
@@ -67,8 +69,10 @@ export default function SearchBar({ onSearch, loading, history }: Props) {
             onClick={() => { setValue(""); inputRef.current?.focus(); }}
             className="flex-shrink-0"
             style={{ color: "var(--text-3)" }}
+            aria-label="Clear search"
+            title="Clear search"
           >
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5}>
+            <svg aria-hidden="true" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5}>
               <path strokeLinecap="round" d="M18 6L6 18M6 6l12 12" />
             </svg>
           </button>
@@ -83,8 +87,10 @@ export default function SearchBar({ onSearch, loading, history }: Props) {
             color: value.trim() && !loading ? "#0c0c0c" : "var(--text-3)",
             cursor: value.trim() && !loading ? "pointer" : "default",
           }}
+          aria-label="Search"
+          title="Search"
         >
-          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={3}>
+          <svg aria-hidden="true" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={3}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M5 12h14M12 5l7 7-7 7" />
           </svg>
         </button>
@@ -106,7 +112,7 @@ export default function SearchBar({ onSearch, loading, history }: Props) {
               onMouseEnter={(e) => (e.currentTarget.style.background = "var(--surface-2)")}
               onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
             >
-              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+              <svg aria-hidden="true" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
                 <polyline points="12 8 12 12 14 14" /><circle cx="12" cy="12" r="10" />
               </svg>
               {q}

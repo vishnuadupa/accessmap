@@ -1,0 +1,3 @@
+## 2024-05-24 - Accessibility improvements for icon buttons and inputs
+**Learning:** Icon-only buttons and unlabelled inputs create severe barriers for screen reader users and can be confusing for mouse users. Next.js does not enforce these accessibility attributes out of the box in custom components.
+**Action:** Always add `aria-label` (and often a `title` tooltip for mouse users) to any `<button>` that contains only an icon (like an SVG or emoji). Always ensure `<input>` fields have an `aria-label` or are linked to a visible `<label>` via `id`. Add `aria-hidden="true"` to decorative `<svg>` icons inside buttons so they aren't redundantly read by screen readers. Add `aria-pressed` or `aria-expanded` attributes to buttons that toggle state or visibility.

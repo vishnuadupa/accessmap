@@ -97,7 +97,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   const locationQuery = rawLocation.replace(PARKING_NOISE, " ").replace(/\s{2,}/g, " ").trim() || rawLocation;
   const HIGH_PRECISION = new Set(["point", "interpolated", "street"]);
   const orsGeo = await geocode(locationQuery);
-  let geocoded =
+  const geocoded =
     orsGeo && HIGH_PRECISION.has(orsGeo.accuracy ?? "")
       ? orsGeo
       : (await geocodeFallback(locationQuery)) ?? orsGeo;

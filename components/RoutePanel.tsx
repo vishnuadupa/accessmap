@@ -61,15 +61,15 @@ export default function RoutePanel({ route, loading, error, spot, onClose }: Pro
         style={{ borderBottom: "1px solid var(--border)" }}
       >
         <div className="flex items-center gap-2">
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} style={{ color: "var(--accent)" }}>
+          <svg aria-hidden="true" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} style={{ color: "var(--accent)" }}>
             <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />
           </svg>
           <span className="text-xs font-semibold" style={{ color: "var(--text)" }}>
             Route to {spot.name}
           </span>
         </div>
-        <button onClick={onClose} style={{ color: "var(--text-3)" }}>
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5}>
+        <button onClick={onClose} style={{ color: "var(--text-3)" }} aria-label="Close route panel" title="Close route panel">
+          <svg aria-hidden="true" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5}>
             <path strokeLinecap="round" d="M18 6L6 18M6 6l12 12" />
           </svg>
         </button>
@@ -98,7 +98,7 @@ export default function RoutePanel({ route, loading, error, spot, onClose }: Pro
             style={{ color: "var(--accent)" }}
           >
             Open in Google Maps
-            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5}>
+            <svg aria-hidden="true" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6M15 3h6m0 0v6m0-6L10 14" />
             </svg>
           </a>
@@ -206,8 +206,10 @@ export default function RoutePanel({ route, loading, error, spot, onClose }: Pro
                 onClick={() => setShowSteps((v) => !v)}
                 className="flex items-center gap-1.5 text-xs w-full"
                 style={{ color: "var(--text-3)" }}
+                aria-expanded={showSteps}
               >
                 <svg
+                  aria-hidden="true"
                   width="10" height="10" viewBox="0 0 24 24" fill="none"
                   stroke="currentColor" strokeWidth={2.5}
                   style={{ transform: showSteps ? "rotate(90deg)" : "rotate(0deg)", transition: "transform 0.15s" }}

@@ -155,19 +155,25 @@ export async function recordIpRequest(hashedIp: string): Promise<void> {
             gemini_calls_today: {
               $cond: {
                 if: {
-                  $gte: [{ $subtract: [now, "$gemini_calls_reset_at"] }, 3600000],
+                  $gte: [
+                    { $subtract: [now, { $ifNull: ["$gemini_calls_reset_at", new Date(0)] }] },
+                    3600000,
+                  ],
                 },
                 then: 1,
-                else: { $add: ["$gemini_calls_today", 1] },
+                else: { $add: [{ $ifNull: ["$gemini_calls_today", 0] }, 1] },
               },
             },
             gemini_calls_reset_at: {
               $cond: {
                 if: {
-                  $gte: [{ $subtract: [now, "$gemini_calls_reset_at"] }, 3600000],
+                  $gte: [
+                    { $subtract: [now, { $ifNull: ["$gemini_calls_reset_at", new Date(0)] }] },
+                    3600000,
+                  ],
                 },
                 then: now,
-                else: "$gemini_calls_reset_at",
+                else: { $ifNull: ["$gemini_calls_reset_at", now] },
               },
             },
             last_active: now,
@@ -221,24 +227,24 @@ export async function recordGeminiCall(session_id: string): Promise<void> {
               $cond: {
                 if: {
                   $gte: [
-                    { $subtract: [now, "$gemini_calls_reset_at"] },
+                    { $subtract: [now, { $ifNull: ["$gemini_calls_reset_at", new Date(0)] }] },
                     86400000,
                   ],
                 },
                 then: 1,
-                else: { $add: ["$gemini_calls_today", 1] },
+                else: { $add: [{ $ifNull: ["$gemini_calls_today", 0] }, 1] },
               },
             },
             gemini_calls_reset_at: {
               $cond: {
                 if: {
                   $gte: [
-                    { $subtract: [now, "$gemini_calls_reset_at"] },
+                    { $subtract: [now, { $ifNull: ["$gemini_calls_reset_at", new Date(0)] }] },
                     86400000,
                   ],
                 },
                 then: now,
-                else: "$gemini_calls_reset_at",
+                else: { $ifNull: ["$gemini_calls_reset_at", now] },
               },
             },
             last_active: now,

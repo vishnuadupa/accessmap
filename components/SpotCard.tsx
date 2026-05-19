@@ -65,6 +65,7 @@ export default function SpotCard({
   return (
     <div
       onClick={onSelect}
+      data-testid="spot-card"
       className="mx-4 my-2 rounded-xl cursor-pointer transition-all duration-200 animate-fade-up"
       style={{
         background: selected ? "var(--surface-2)" : "var(--surface)",

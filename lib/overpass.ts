@@ -246,24 +246,19 @@ export async function queryWheelchairParking(
 
   try {
     data = await fetchOverpass(buildQuery(lat, lon, radius));
-    console.log(`[overpass] primary OK: ${data.elements.length} elements`);
   } catch (err) {
     console.warn("[overpass] primary failed, trying Nominatim:", String(err));
     data = await queryNominatim(lat, lon, radius * 2);
-    console.log(`[overpass] primary Nominatim: ${data.elements.length} elements`);
     fallback_used = true;
   }
 
   // If primary found nothing, widen to all parking
   if (data.elements.length === 0 && !fallback_used) {
-    console.log("[overpass] primary 0 results, trying all-parking fallback");
     try {
       data = await fetchOverpass(buildFallbackQuery(lat, lon, radius * 2));
-      console.log(`[overpass] fallback OK: ${data.elements.length} elements`);
     } catch (err2) {
       console.warn("[overpass] fallback Overpass failed:", String(err2));
       data = await queryNominatim(lat, lon, radius * 2);
-      console.log(`[overpass] fallback Nominatim: ${data.elements.length} elements`);
     }
     fallback_used = true;
   }

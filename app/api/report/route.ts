@@ -40,6 +40,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   const parsed = ReportSchema.safeParse(body);
   if (!parsed.success) {
     // H1 FIX: never return Zod field details
+    console.error("[report] Validation error:", parsed.error.format());
     return NextResponse.json({ error: "Invalid request" }, { status: 400 });
   }
 

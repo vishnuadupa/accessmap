@@ -12,10 +12,12 @@ const RouteSchema = z.object({
 });
 
 function getHashedIp(req: NextRequest): string {
-  const raw =
-    req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ??
-    req.headers.get("x-real-ip") ??
-    "unknown";
+  // `req.ip` is extracted securely by Next.js in production (Vercel edge).
+  // Fallback to 'x-real-ip'. We DO NOT use 'x-forwarded-for' because
+  // its first value can be arbitrarily set by a malicious client.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const reqIp = (req as any).ip;
+  const raw = reqIp ?? req.headers.get("x-real-ip") ?? "unknown";
   return crypto.createHash("sha256").update(raw).digest("hex").slice(0, 24);
 }
 

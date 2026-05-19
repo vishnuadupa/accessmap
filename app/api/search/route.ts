@@ -147,7 +147,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 
   // ── 7. Apply filter + intent preferences ──────────────────────────────────
   if (spots && spots.length > 0) {
-    let filtered = spots.filter((s) => {
+    const filtered = spots.filter((s) => {
       if (intent.filters.includes("free") && s.fee === true) return false;
       if (intent.filters.includes("covered") && s.covered === false) return false;
       if (intent.filters.includes("lit") && s.lit === false) return false;
@@ -158,25 +158,25 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       return true;
     });
 
-    // van_mode: if user is in van mode, sort van-accessible spots to the top
-    // rather than hard-filtering (there may be very few van_accessible spots)
-    if (intent.van_mode && filtered.length > 0) {
-      filtered = [
-        ...filtered.filter((s) => s.van_accessible === true),
-        ...filtered.filter((s) => s.van_accessible !== true),
-      ];
-    }
-
     // Always float confirmed/tagged spots above completely unknown ones,
     // preserving distance order within each tier.
-    const accessTier = (s: typeof filtered[0]) => {
-      if (s.wheelchair === "yes" || s.van_accessible === true) return 3;
-      if (s.wheelchair === "limited") return 2;
-      if (s.capacity_disabled !== null && s.capacity_disabled > 0) return 1;
-      return 0;
-    };
+    // van_mode: if user is in van mode, sort van-accessible spots to the top (tier 4)
+    // rather than hard-filtering (there may be very few van_accessible spots)
+    const isVanMode = intent.van_mode;
     filtered.sort((a, b) => {
-      const diff = accessTier(b) - accessTier(a);
+      let tierA = 0;
+      if (isVanMode && a.van_accessible === true) tierA = 4;
+      else if (a.wheelchair === "yes" || a.van_accessible === true) tierA = 3;
+      else if (a.wheelchair === "limited") tierA = 2;
+      else if (a.capacity_disabled !== null && a.capacity_disabled > 0) tierA = 1;
+
+      let tierB = 0;
+      if (isVanMode && b.van_accessible === true) tierB = 4;
+      else if (b.wheelchair === "yes" || b.van_accessible === true) tierB = 3;
+      else if (b.wheelchair === "limited") tierB = 2;
+      else if (b.capacity_disabled !== null && b.capacity_disabled > 0) tierB = 1;
+
+      const diff = tierB - tierA;
       return diff !== 0 ? diff : (a.distance_m ?? 0) - (b.distance_m ?? 0);
     });
 

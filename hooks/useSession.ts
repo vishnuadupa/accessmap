@@ -13,9 +13,13 @@ export function useSession(): string | null {
         stored = crypto.randomUUID();
         localStorage.setItem("accessmap_session", stored);
       }
+
+
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setId(stored);
     } catch {
       // Private-browsing localStorage may throw — fall back to a session-only UUID
+
       setId(crypto.randomUUID());
     }
   }, []);

@@ -60,7 +60,7 @@ const CHECK_DATE_RE = /^\d{4}(-\d{2}(-\d{2})?)?$/;
 
 const PARKING_TYPES = ["surface", "multi-storey", "underground", "rooftop", "street_side"] as const;
 
-function parseTag(tags: Record<string, string>): Partial<ParkingSpot> {
+export function parseTag(tags: Record<string, string>): Partial<ParkingSpot> {
   const fee = tags["fee"];
   const lit = tags["lit"];
   const covered = tags["covered"];

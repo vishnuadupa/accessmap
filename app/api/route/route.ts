@@ -46,6 +46,12 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     return NextResponse.json({ error: "Invalid coordinates" }, { status: 400 });
   }
 
+  // Check cache first — if cached, don't count against IP limit
+  const cached = await getCachedRoute(origin, destination);
+  if (cached) {
+    return NextResponse.json(cached);
+  }
+
   // Fix: IP rate limit — prevents draining ORS 2,000/day quota
   // Routes are cached so real ORS calls only happen on cache miss.
   // Reuse the same 60/hr bucket as search (shared IP limit across endpoints).
@@ -56,12 +62,6 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       { error: "Too many requests. Please wait a moment and try again." },
       { status: 429 }
     );
-  }
-
-  // Check cache first — if cached, don't count against IP limit
-  const cached = await getCachedRoute(origin, destination);
-  if (cached) {
-    return NextResponse.json(cached);
   }
 
   // Cache miss — record the IP request and hit ORS

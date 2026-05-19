@@ -27,7 +27,13 @@ export async function geocode(query: string): Promise<GeocodedLocation | null> {
     const feature = data?.features?.[0];
     if (!feature) return null;
 
-    const [lon, lat] = feature.geometry.coordinates;
+    const coordinates = feature?.geometry?.coordinates;
+    if (!Array.isArray(coordinates) || coordinates.length < 2) return null;
+
+    const [lon, lat] = coordinates;
+    if (typeof lat !== "number" || typeof lon !== "number") return null;
+    if (lat < -90 || lat > 90 || lon < -180 || lon > 180) return null;
+
     const props = feature.properties ?? {};
 
     const VALID_ACCURACY = ["point", "interpolated", "centroid", "street"];

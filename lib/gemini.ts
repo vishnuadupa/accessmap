@@ -1,5 +1,5 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
-import type { ParsedIntent, ParkingSpot, SpotFilter } from "@/types";
+import type { ParsedIntent, ParkingSpot, } from "@/types";
 
 const API_KEY = process.env.GEMINI_API_KEY;
 
@@ -170,13 +170,17 @@ ${JSON.stringify(top3)}`;
 
   // L1 FIX: track whether the Gemini call actually happened so the caller
   // can record it accurately. Throw on failure so caller knows.
-  const result = await model.generateContent({
-    contents: [{ role: "user", parts: [{ text: prompt }] }],
-    generationConfig: {
-      maxOutputTokens: 250,
-      temperature: 0.3,
-    },
-  });
+  try {
+    const result = await model.generateContent({
+      contents: [{ role: "user", parts: [{ text: prompt }] }],
+      generationConfig: {
+        maxOutputTokens: 250,
+        temperature: 0.3,
+      },
+    });
 
-  return result.response.text().trim();
+    return result.response.text().trim();
+  } catch (error) {
+    throw new Error(`Narration AI call failed: ${error instanceof Error ? error.message : String(error)}`);
+  }
 }

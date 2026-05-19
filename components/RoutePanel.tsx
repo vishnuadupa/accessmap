@@ -88,8 +88,20 @@ export default function RoutePanel({ route, loading, error, spot, onClose }: Pro
 
       {/* Error */}
       {error && !loading && (
-        <div className="px-4 py-4">
+        <div className="px-4 py-4 space-y-2.5">
           <p className="text-xs" style={{ color: "#f87171" }}>{error}</p>
+          <a
+            href={`https://www.google.com/maps/dir/?api=1&destination=${spot.loc.coordinates[1]},${spot.loc.coordinates[0]}&travelmode=walking`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-1 text-xs"
+            style={{ color: "var(--accent)" }}
+          >
+            Open in Google Maps
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6M15 3h6m0 0v6m0-6L10 14" />
+            </svg>
+          </a>
         </div>
       )}
 

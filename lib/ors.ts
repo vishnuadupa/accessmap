@@ -46,6 +46,63 @@ export async function geocode(query: string): Promise<GeocodedLocation | null> {
 
 // ─── Routing ──────────────────────────────────────────────────────────────────
 
+async function fetchOrsRoute(
+  profile: "wheelchair" | "foot-walking",
+  origin: [number, number],
+  destination: [number, number],
+  apiKey: string
+): Promise<RouteResult | null> {
+  const body = {
+    coordinates: [
+      [origin[1], origin[0]],
+      [destination[1], destination[0]],
+    ],
+    instructions: true,
+    units: "m",
+    extra_info: profile === "wheelchair" ? ["surface", "waytypes", "suitability"] : ["surface", "waytypes"],
+  };
+
+  const resp = await fetch(`${ORS_BASE}/v2/directions/${profile}/json`, {
+    method: "POST",
+    headers: { Authorization: apiKey, "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+    signal: AbortSignal.timeout(10000),
+  });
+
+  if (!resp.ok) {
+    const errText = await resp.text();
+    console.error(`ORS ${profile} routing error ${resp.status}:`, errText.slice(0, 200));
+    return null;
+  }
+
+  const data = await resp.json();
+  const route = data?.routes?.[0];
+  if (!route) return null;
+
+  const summary = route.summary;
+  const steps: RouteInstruction[] = (route.segments?.[0]?.steps ?? []).map(
+    (s: { instruction: string; distance: number; duration: number }) => ({
+      text: s.instruction,
+      distance: Math.round(s.distance),
+      duration: Math.round(s.duration),
+    })
+  );
+
+  return {
+    distance_m: Math.round(summary.distance),
+    duration_s: Math.round(summary.duration),
+    geometry: route.geometry,
+    instructions: steps,
+    cache_hit: false,
+    surface_summary: parseSurfaceSummary(data.extras?.surface?.summary ?? []),
+    suitability_score: profile === "wheelchair"
+      ? parseSuitabilityScore(data.extras?.suitability?.summary ?? [])
+      : null,
+    has_steps: parseHasSteps(data.extras?.waytypes?.summary ?? []),
+    warnings: parseWarnings(route.warnings ?? []),
+  };
+}
+
 export async function getWheelchairRoute(
   origin: [number, number], // [lat, lon]
   destination: [number, number]
@@ -55,68 +112,23 @@ export async function getWheelchairRoute(
     return null;
   }
 
-  // ORS expects [lon, lat]
-  const body = {
-    coordinates: [
-      [origin[1], origin[0]],
-      [destination[1], destination[0]],
-    ],
-    instructions: true,
-    units: "m",
-    // extra_info adds per-segment surface type and suitability at zero extra cost.
-    // Surface tells users "38% of this route is cobblestone" — critical for wheelchair users.
-    extra_info: ["surface", "waytypes", "suitability"],
-  };
-
   try {
-    const resp = await fetch(
-      `${ORS_BASE}/v2/directions/wheelchair/json`,
-      {
-        method: "POST",
-        headers: {
-          Authorization: API_KEY,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(body),
-        signal: AbortSignal.timeout(10000),
-      }
-    );
+    // Try wheelchair profile first — gives suitability + surface data
+    const result = await fetchOrsRoute("wheelchair", origin, destination, API_KEY);
+    if (result) return result;
 
-    if (!resp.ok) {
-      const err = await resp.text();
-      console.error("ORS routing error:", err);
-      return null;
-    }
-
-    const data = await resp.json();
-    const route = data?.routes?.[0];
-    if (!route) return null;
-
-    const summary = route.summary;
-    const steps: RouteInstruction[] =
-      (route.segments?.[0]?.steps ?? []).map(
-        (s: { instruction: string; distance: number; duration: number }) => ({
-          text: s.instruction,
-          distance: Math.round(s.distance),
-          duration: Math.round(s.duration),
-        })
-      );
-
-    const surface_summary = parseSurfaceSummary(data.extras?.surface?.summary ?? []);
-    const suitability_score = parseSuitabilityScore(data.extras?.suitability?.summary ?? []);
-    const has_steps = parseHasSteps(data.extras?.waytypes?.summary ?? []);
-    const warnings = parseWarnings(route.warnings ?? []);
+    // Wheelchair profile failed (common in US where OSM lacks sidewalk coverage).
+    // Fall back to foot-walking so users get at least a walking route with a warning.
+    console.warn("[ors] wheelchair profile failed, falling back to foot-walking");
+    const fallback = await fetchOrsRoute("foot-walking", origin, destination, API_KEY);
+    if (!fallback) return null;
 
     return {
-      distance_m: Math.round(summary.distance),
-      duration_s: Math.round(summary.duration),
-      geometry: route.geometry,
-      instructions: steps,
-      cache_hit: false,
-      surface_summary,
-      suitability_score,
-      has_steps,
-      warnings,
+      ...fallback,
+      warnings: [
+        "Wheelchair-specific routing unavailable for this area — showing walking route. Verify accessibility before travelling.",
+        ...fallback.warnings,
+      ],
     };
   } catch (err) {
     console.error("ORS routing exception:", err);

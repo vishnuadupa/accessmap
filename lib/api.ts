@@ -14,7 +14,8 @@ async function post<T>(path: string, body: unknown): Promise<T> {
   });
   if (!res.ok) {
     const err = await res.json().catch(() => ({ error: "Request failed" }));
-    throw new Error((err as { error?: string }).error ?? "Request failed");
+    const e = err as { message?: string; error?: string };
+    throw new Error(e.message ?? e.error ?? "Request failed");
   }
   return res.json();
 }
@@ -25,7 +26,8 @@ async function get<T>(path: string, params: Record<string, string>): Promise<T> 
   const res = await fetch(url.toString());
   if (!res.ok) {
     const err = await res.json().catch(() => ({ error: "Request failed" }));
-    throw new Error((err as { error?: string }).error ?? "Request failed");
+    const e = err as { message?: string; error?: string };
+    throw new Error(e.message ?? e.error ?? "Request failed");
   }
   return res.json();
 }

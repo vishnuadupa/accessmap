@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useMemo } from "react";
 import { MapContainer, TileLayer, Marker, Popup, Polyline, GeoJSON, Circle, useMap } from "react-leaflet";
 import L from "leaflet";
 import type { ParkingSpot, RouteResult, IsochroneResult } from "@/types";
@@ -88,7 +88,10 @@ export interface Props {
 export default function MapView({
   center, zoom, spots, selectedSpot, route, isochrone, userLocation, onSpotClick,
 }: Props) {
-  const routePoints = route?.geometry ? decodePolyline(route.geometry) : [];
+  const routePoints = useMemo(
+    () => (route?.geometry ? decodePolyline(route.geometry) : []),
+    [route]
+  );
 
   return (
     <MapContainer

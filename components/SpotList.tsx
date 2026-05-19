@@ -1,3 +1,4 @@
+import { memo } from "react";
 import type { ParkingSpot } from "@/types";
 import SpotCard from "./SpotCard";
 
@@ -12,7 +13,7 @@ interface Props {
   onReport: (spot: ParkingSpot) => void;
 }
 
-export default function SpotList({
+const SpotList = memo(function SpotList({
   spots, selectedSpot, favoriteIds, spotCommunity, onSelect, onRoute, onFavorite, onReport,
 }: Props) {
   if (spots.length === 0) return null;
@@ -35,13 +36,15 @@ export default function SpotList({
             selected={isSelected}
             isFavorite={favoriteIds.has(spot.osm_id)}
             community={isSelected ? spotCommunity : null}
-            onSelect={() => onSelect(spot)}
-            onRoute={() => onRoute(spot)}
-            onFavorite={() => onFavorite(spot)}
-            onReport={() => onReport(spot)}
+            onSelect={onSelect}
+            onRoute={onRoute}
+            onFavorite={onFavorite}
+            onReport={onReport}
           />
         );
       })}
     </div>
   );
-}
+});
+
+export default SpotList;

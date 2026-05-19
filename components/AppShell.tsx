@@ -332,7 +332,7 @@ export default function AppShell() {
                   onSelect={handleSpotSelect}
                   onRoute={handleGetRoute}
                   onFavorite={handleToggleFavorite}
-                  onReport={(spot) => setReportSpot(spot)}
+                  onReport={setReportSpot}
                 />
               )}
 

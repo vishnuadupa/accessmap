@@ -1,4 +1,5 @@
 "use client";
+import { memo } from "react";
 import type { ParkingSpot } from "@/types";
 
 interface Props {
@@ -6,10 +7,10 @@ interface Props {
   selected: boolean;
   isFavorite: boolean;
   community: Record<string, number> | null;
-  onSelect: () => void;
-  onRoute: () => void;
-  onFavorite: () => void;
-  onReport: () => void;
+  onSelect: (spot: ParkingSpot) => void;
+  onRoute: (spot: ParkingSpot) => void;
+  onFavorite: (spot: ParkingSpot) => void;
+  onReport: (spot: ParkingSpot) => void;
 }
 
 function verificationInfo(spot: ParkingSpot) {
@@ -50,7 +51,7 @@ const COMMUNITY_LABELS: Record<string, { label: string; color: string }> = {
   not_accessible: { label: "Never accessible", color: "#f87171" },
 };
 
-export default function SpotCard({
+const SpotCard = memo(function SpotCard({
   spot, selected, isFavorite, community, onSelect, onRoute, onFavorite, onReport,
 }: Props) {
   const verification = verificationInfo(spot);
@@ -64,7 +65,7 @@ export default function SpotCard({
 
   return (
     <div
-      onClick={onSelect}
+      onClick={() => onSelect(spot)}
       className="mx-4 my-2 rounded-xl cursor-pointer transition-all duration-200 animate-fade-up"
       style={{
         background: selected ? "var(--surface-2)" : "var(--surface)",
@@ -93,7 +94,7 @@ export default function SpotCard({
               <span className="text-xs" style={{ color: "var(--text-3)" }}>{distanceLabel}</span>
             )}
             <button
-              onClick={(e) => { e.stopPropagation(); onFavorite(); }}
+              onClick={(e) => { e.stopPropagation(); onFavorite(spot); }}
               className="transition-all"
               style={{ color: isFavorite ? "#f87171" : "var(--text-3)" }}
             >
@@ -302,7 +303,7 @@ export default function SpotCard({
           onClick={(e) => e.stopPropagation()}
         >
           <button
-            onClick={onRoute}
+            onClick={() => onRoute(spot)}
             className="flex-1 py-2 rounded-lg text-sm font-medium transition-all"
             style={{ background: "var(--accent)", color: "#0c0c0c" }}
             onMouseEnter={(e) => (e.currentTarget.style.background = "#86efac")}
@@ -311,7 +312,7 @@ export default function SpotCard({
             Get Route
           </button>
           <button
-            onClick={onReport}
+            onClick={() => onReport(spot)}
             className="py-2 px-3 rounded-lg text-sm transition-all"
             style={{ background: "var(--surface-2)", border: "1px solid var(--border)", color: "var(--text-2)" }}
             onMouseEnter={(e) => (e.currentTarget.style.borderColor = "rgba(248,113,113,0.4)")}
@@ -323,4 +324,6 @@ export default function SpotCard({
       )}
     </div>
   );
-}
+});
+
+export default SpotCard;

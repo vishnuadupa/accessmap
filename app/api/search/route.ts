@@ -3,7 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 
 export const maxDuration = 45; // seconds — needs Vercel Pro; Hobby cap is 10s
 import { z } from "zod";
-import { parseIntent, stripDangerous, sanitizeQuery } from "@/lib/gemini";
+import { parseIntent, narrateResults, stripDangerous, sanitizeQuery } from "@/lib/gemini";
 import { geocode, geocodeFallback } from "@/lib/ors";
 import { queryWheelchairParking } from "@/lib/overpass";
 import {
@@ -188,25 +188,38 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   // swallow errors). We catch here and use a fallback string WITHOUT counting
   // the call against the quota.
   let narration = "";
-  // Narration uses a template — saves the second Gemini call per search.
-  // This doubles our daily Gemini budget (now 1 call/search for parseIntent only).
-  const safeName = stripDangerous(geocoded.display_name).slice(0, 100);
-  if (spots && spots.length > 0) {
-    const wheelchairCount = spots.filter((s) => s.wheelchair === "yes").length;
-    const taggedCount = spots.filter((s) =>
-      s.wheelchair === "yes" || s.wheelchair === "limited" ||
-      s.van_accessible === true || (s.capacity_disabled !== null && (s.capacity_disabled ?? 0) > 0)
-    ).length;
-    const verifiedNote = fallback_used ? " Accessibility status may not be confirmed for all spots." : "";
-    if (wheelchairCount > 0) {
-      narration = `Found ${spots.length} parking option${spots.length > 1 ? "s" : ""} near ${safeName}, including ${wheelchairCount} confirmed wheelchair-accessible.${verifiedNote}`;
-    } else if (taggedCount > 0) {
-      narration = `Found ${spots.length} parking option${spots.length > 1 ? "s" : ""} near ${safeName}. ${taggedCount} ha${taggedCount === 1 ? "s" : "ve"} accessibility tags in OpenStreetMap — call ahead to confirm current access.${verifiedNote}`;
-    } else {
-      narration = `Found ${spots.length} nearby parking option${spots.length > 1 ? "s" : ""} near ${safeName}, but none have accessibility data in OpenStreetMap. Call ahead or check Google Maps for accessible space details.${verifiedNote}`;
+  let narrationSuccess = false;
+
+  if (geminiAllowed) {
+    try {
+      narration = await narrateResults(spots ?? [], geocoded.display_name);
+      await recordGeminiCall(session_id);
+      narrationSuccess = true;
+    } catch (err) {
+      const e = err as { status?: number; message?: string };
+      console.error(`Gemini narrateResults failed [${e.status ?? "?"}]: ${String(e.message ?? err).slice(0, 200)}`);
     }
-  } else {
-    narration = `No confirmed wheelchair-accessible parking was found near ${safeName}. Try widening your search or check nearby garages directly.`;
+  }
+
+  if (!narrationSuccess) {
+    const safeName = stripDangerous(geocoded.display_name).slice(0, 100);
+    if (spots && spots.length > 0) {
+      const wheelchairCount = spots.filter((s) => s.wheelchair === "yes").length;
+      const taggedCount = spots.filter((s) =>
+        s.wheelchair === "yes" || s.wheelchair === "limited" ||
+        s.van_accessible === true || (s.capacity_disabled !== null && (s.capacity_disabled ?? 0) > 0)
+      ).length;
+      const verifiedNote = fallback_used ? " Accessibility status may not be confirmed for all spots." : "";
+      if (wheelchairCount > 0) {
+        narration = `Found ${spots.length} parking option${spots.length > 1 ? "s" : ""} near ${safeName}, including ${wheelchairCount} confirmed wheelchair-accessible.${verifiedNote}`;
+      } else if (taggedCount > 0) {
+        narration = `Found ${spots.length} parking option${spots.length > 1 ? "s" : ""} near ${safeName}. ${taggedCount} ha${taggedCount === 1 ? "s" : "ve"} accessibility tags in OpenStreetMap — call ahead to confirm current access.${verifiedNote}`;
+      } else {
+        narration = `Found ${spots.length} nearby parking option${spots.length > 1 ? "s" : ""} near ${safeName}, but none have accessibility data in OpenStreetMap. Call ahead or check Google Maps for accessible space details.${verifiedNote}`;
+      }
+    } else {
+      narration = `No confirmed wheelchair-accessible parking was found near ${safeName}. Try widening your search or check nearby garages directly.`;
+    }
   }
 
   // ── 9. Record query history — sanitize before storing (goes to DB, may be displayed)

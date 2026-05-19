@@ -1,5 +1,7 @@
 import type { NextConfig } from "next";
 
+const isDev = process.env.NODE_ENV !== "production";
+
 const securityHeaders = [
   // Prevent MIME-type sniffing — stops browser from guessing content-type
   { key: "X-Content-Type-Options", value: "nosniff" },
@@ -20,7 +22,7 @@ const securityHeaders = [
     key: "Content-Security-Policy",
     value: [
       "default-src 'self'",
-      "script-src 'self' 'unsafe-inline' 'unsafe-eval'", // unsafe-inline needed for Next.js inline scripts (RSC streaming, __next_r)
+      `script-src 'self' 'unsafe-inline'${isDev ? " 'unsafe-eval'" : ""}`, // unsafe-inline needed for Next.js inline scripts (RSC streaming, __next_r)
       "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com", // Leaflet uses inline styles
       "font-src 'self' https://fonts.gstatic.com",
       "img-src 'self' data: https://*.tile.openstreetmap.org https://*.openstreetmap.org https://*.basemaps.cartocdn.com https://unpkg.com",

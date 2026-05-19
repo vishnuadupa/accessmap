@@ -1,4 +1,3 @@
-import crypto from "crypto";
 import { NextRequest, NextResponse } from "next/server";
 
 export const maxDuration = 45; // seconds — needs Vercel Pro; Hobby cap is 10s
@@ -14,6 +13,7 @@ import {
   appendQueryHistory,
   checkIpRateLimit,
   recordIpRequest,
+  getHashedIp,
 } from "@/lib/cache";
 import type { SearchResponse, SpotFilter, ParsedIntent } from "@/types";
 
@@ -24,14 +24,6 @@ const SearchSchema = z.object({
   lat: z.number().min(-90).max(90).optional(),
   lon: z.number().min(-180).max(180).optional(),
 });
-
-function getHashedIp(req: NextRequest): string {
-  const raw =
-    req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ??
-    req.headers.get("x-real-ip") ??
-    "unknown";
-  return crypto.createHash("sha256").update(raw).digest("hex").slice(0, 24);
-}
 
 export async function POST(req: NextRequest): Promise<NextResponse> {
   // ── 1. Validate input ──────────────────────────────────────────────────────

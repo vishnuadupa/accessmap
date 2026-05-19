@@ -1,4 +1,5 @@
 import crypto from "crypto";
+import type { NextRequest } from "next/server";
 import { connectDB } from "@/lib/mongodb";
 import { SpotModel } from "@/models/Spot";
 import { RouteModel } from "@/models/Route";
@@ -277,4 +278,16 @@ export async function appendQueryHistory(
   } catch (err) {
     console.warn("Query history append failed:", err);
   }
+}
+
+
+export function getHashedIp(req: NextRequest): string {
+  // Fix: Prioritize x-real-ip (set securely by reverse proxies like Vercel) over
+  // x-forwarded-for to prevent IP spoofing attacks bypassing rate limits.
+  const raw =
+    req.headers.get("x-real-ip") ??
+    req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ??
+    "unknown";
+
+  return crypto.createHash("sha256").update(raw).digest("hex").slice(0, 24);
 }

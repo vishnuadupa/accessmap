@@ -1,8 +1,7 @@
-import crypto from "crypto";
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { getWheelchairRoute } from "@/lib/ors";
-import { getCachedRoute, setCachedRoute, checkIpRateLimit, recordIpRequest } from "@/lib/cache";
+import { getCachedRoute, setCachedRoute, checkIpRateLimit, recordIpRequest, getHashedIp } from "@/lib/cache";
 
 const RouteSchema = z.object({
   origin: z.tuple([z.number(), z.number()]),
@@ -10,14 +9,6 @@ const RouteSchema = z.object({
   // Fix: add regex guard consistent with /api/report and /api/favorite
   spot_id: z.string().min(1).max(50).regex(/^[0-9a-zA-Z_-]+$/),
 });
-
-function getHashedIp(req: NextRequest): string {
-  const raw =
-    req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ??
-    req.headers.get("x-real-ip") ??
-    "unknown";
-  return crypto.createHash("sha256").update(raw).digest("hex").slice(0, 24);
-}
 
 export async function POST(req: NextRequest): Promise<NextResponse> {
   let body: unknown;

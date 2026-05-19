@@ -1,5 +1,5 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
-import type { ParsedIntent, ParkingSpot, SpotFilter } from "@/types";
+import type { ParsedIntent, ParkingSpot } from "@/types";
 
 const API_KEY = process.env.GEMINI_API_KEY;
 

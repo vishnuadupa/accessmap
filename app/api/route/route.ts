@@ -13,7 +13,7 @@ const RouteSchema = z.object({
 
 function getHashedIp(req: NextRequest): string {
   const raw =
-    req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ??
+    req.headers.get("x-forwarded-for")?.split(",").pop()?.trim() ??
     req.headers.get("x-real-ip") ??
     "unknown";
   return crypto.createHash("sha256").update(raw).digest("hex").slice(0, 24);

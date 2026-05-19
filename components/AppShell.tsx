@@ -153,7 +153,7 @@ export default function AppShell() {
     // Optimistic update
     setFavoriteIds((prev) => {
       const next = new Set(prev);
-      isFav ? next.delete(spot.osm_id) : next.add(spot.osm_id);
+      if (isFav) { next.delete(spot.osm_id); } else { next.add(spot.osm_id); }
       return next;
     });
     try {
@@ -170,7 +170,7 @@ export default function AppShell() {
       // Revert
       setFavoriteIds((prev) => {
         const next = new Set(prev);
-        isFav ? next.add(spot.osm_id) : next.delete(spot.osm_id);
+        if (isFav) { next.add(spot.osm_id); } else { next.delete(spot.osm_id); }
         return next;
       });
     }

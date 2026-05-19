@@ -15,7 +15,7 @@ import {
   checkIpRateLimit,
   recordIpRequest,
 } from "@/lib/cache";
-import type { SearchResponse, SpotFilter, ParsedIntent } from "@/types";
+import type { SearchResponse, ParsedIntent } from "@/types";
 
 const SearchSchema = z.object({
   query: z.string().min(1).max(200),
@@ -24,7 +24,7 @@ const SearchSchema = z.object({
 
 function getHashedIp(req: NextRequest): string {
   const raw =
-    req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ??
+    req.headers.get("x-forwarded-for")?.split(",").pop()?.trim() ??
     req.headers.get("x-real-ip") ??
     "unknown";
   return crypto.createHash("sha256").update(raw).digest("hex").slice(0, 24);
@@ -97,7 +97,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   const locationQuery = rawLocation.replace(PARKING_NOISE, " ").replace(/\s{2,}/g, " ").trim() || rawLocation;
   const HIGH_PRECISION = new Set(["point", "interpolated", "street"]);
   const orsGeo = await geocode(locationQuery);
-  let geocoded =
+  const geocoded =
     orsGeo && HIGH_PRECISION.has(orsGeo.accuracy ?? "")
       ? orsGeo
       : (await geocodeFallback(locationQuery)) ?? orsGeo;

@@ -12,9 +12,11 @@ const RouteSchema = z.object({
 });
 
 function getHashedIp(req: NextRequest): string {
+  // In Next.js 15+ App Router, req.ip was removed.
+  // We use x-real-ip if available, else the right-most part of x-forwarded-for (appended by trusted proxy).
   const raw =
-    req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ??
     req.headers.get("x-real-ip") ??
+    req.headers.get("x-forwarded-for")?.split(",").pop()?.trim() ??
     "unknown";
   return crypto.createHash("sha256").update(raw).digest("hex").slice(0, 24);
 }

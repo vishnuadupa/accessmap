@@ -26,10 +26,9 @@ const SearchSchema = z.object({
 });
 
 function getHashedIp(req: NextRequest): string {
-  const raw =
-    req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ??
-    req.headers.get("x-real-ip") ??
-    "unknown";
+  // Use framework-provided IP which correctly parses trusted proxy headers in Vercel.
+  // Next.js automatically populates `req.ip` securely on Vercel deployments.
+  const raw = (req as any).ip ?? "unknown";
   return crypto.createHash("sha256").update(raw).digest("hex").slice(0, 24);
 }
 

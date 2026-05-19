@@ -15,14 +15,14 @@ const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
 // Strip characters that could break out of prompt context or inject instructions.
 // Strips: quotes, backticks, angle brackets, XML-like tags.
 function sanitizeForPrompt(str: string): string {
-  return str
-    .slice(0, 200)
-    // Strip characters that break out of prompt context
-    .replace(/[<>"'`\\]/g, " ")
-    // Strip our own delimiter words — prevents USER_QUERY_END spoofing
-    .replace(/USER_QUERY_(START|END)/gi, "")
-    .replace(/\s+/g, " ")
-    .trim();
+  let cleaned = str.slice(0, 200);
+  // Remove backticks, quotes, angle brackets and backslashes
+  cleaned = cleaned.replace(/[<>"'`\\]/g, " ");
+  // Strip out the custom delimiters to prevent injection
+  cleaned = cleaned.replace(/USER_QUERY_START/gi, " ");
+  cleaned = cleaned.replace(/USER_QUERY_END/gi, " ");
+
+  return cleaned.replace(/\s+/g, " ").trim();
 }
 
 // Sanitize a string for safe storage in query_history (goes to DB, may be displayed)
@@ -57,12 +57,14 @@ Rules:
 export async function parseIntent(query: string): Promise<ParsedIntent> {
   // C1 FIX: sanitize quotes/backticks that could break prompt structure,
   // and use explicit delimiters that are stripped from input so they can't be spoofed.
-  const sanitized = sanitizeForPrompt(query);
+
+  // Sanitize the query to prevent prompt injection
+  const safeQuery = sanitizeForPrompt(query);
 
   const prompt = `${INTENT_SYSTEM_PROMPT}
 
 USER_QUERY_START
-${sanitized}
+${safeQuery}
 USER_QUERY_END`;
 
   const result = await model.generateContent({

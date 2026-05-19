@@ -15,7 +15,7 @@ import {
   checkIpRateLimit,
   recordIpRequest,
 } from "@/lib/cache";
-import type { SearchResponse, SpotFilter, ParsedIntent } from "@/types";
+import type { SearchResponse, ParsedIntent } from "@/types";
 
 const SearchSchema = z.object({
   query: z.string().min(1).max(200),
@@ -115,9 +115,6 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     );
   }
 
-  console.log(`[search] intent.location="${intent.location}" radius=${intent.radius_m} van=${intent.van_mode} filters=${JSON.stringify(intent.filters)}`);
-  console.log(`[search] geocoded: lat=${geocoded.lat}, lon=${geocoded.lon}, name="${geocoded.display_name}"`);
-
   // ── 6. Check spot cache ────────────────────────────────────────────────────
   const cachedSpots = await getCachedSpots(
     geocoded.lat,
@@ -131,11 +128,9 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   if (!spots) {
     cache_hit = false;
     try {
-      const t0 = Date.now();
       const result = await queryWheelchairParking(geocoded, intent.radius_m);
       spots = result.spots;
       fallback_used = result.fallback_used;
-      console.log(`[search] Overpass OK: ${spots.length} spots, fallback=${fallback_used}, ${Date.now()-t0}ms`);
       setCachedSpots(geocoded.lat, geocoded.lon, intent.radius_m, spots).catch(
         () => {}
       );

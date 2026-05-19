@@ -2,9 +2,9 @@ import mongoose from "mongoose";
 
 // Cache connection on globalThis to survive Next.js hot reloads in dev
 declare global {
-  // eslint-disable-next-line no-var
+
   var _mongooseConn: typeof mongoose | null;
-  // eslint-disable-next-line no-var
+
   var _mongoosePromise: Promise<typeof mongoose> | null;
 }
 

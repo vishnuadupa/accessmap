@@ -1,19 +1,10 @@
-import crypto from "crypto";
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { connectDB } from "@/lib/mongodb";
 import { ReportModel } from "@/models/Report";
 import { SpotModel } from "@/models/Spot";
 import { stripDangerous } from "@/lib/gemini";
-import { checkIpRateLimit, recordIpRequest } from "@/lib/cache";
-
-function getHashedIp(req: NextRequest): string {
-  const raw =
-    req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ??
-    req.headers.get("x-real-ip") ??
-    "unknown";
-  return crypto.createHash("sha256").update(raw).digest("hex").slice(0, 24);
-}
+import { checkIpRateLimit, recordIpRequest, getHashedIp } from "@/lib/cache";
 
 const ReportSchema = z.object({
   session_id: z.string().uuid(),

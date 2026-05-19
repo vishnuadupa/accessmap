@@ -4,15 +4,7 @@ import { z } from "zod";
 import { getIsochrone } from "@/lib/ors";
 import { connectDB } from "@/lib/mongodb";
 import { IsochroneModel } from "@/models/Isochrone";
-import { checkIpRateLimit, recordIpRequest } from "@/lib/cache";
-
-function getHashedIp(req: NextRequest): string {
-  const raw =
-    req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ??
-    req.headers.get("x-real-ip") ??
-    "unknown";
-  return crypto.createHash("sha256").update(raw).digest("hex").slice(0, 24);
-}
+import { checkIpRateLimit, recordIpRequest, getHashedIp } from "@/lib/cache";
 
 const IsochroneSchema = z.object({
   // destination the user is trying to reach [lat, lon]

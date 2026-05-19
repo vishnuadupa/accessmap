@@ -26,7 +26,9 @@ const ReportSchema = z.object({
     "still_accessible",      // crowd-verification: spot is still accessible
     "no_longer_accessible",  // crowd-verification: accessibility has changed
   ]),
-  note: z.string().max(200).optional(),
+  note: z.string().max(200).optional().transform(val =>
+    val ? stripDangerous(val).slice(0, 200) || null : null
+  ),
 });
 
 export async function POST(req: NextRequest): Promise<NextResponse> {
@@ -74,14 +76,11 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       );
     }
 
-    // M3 FIX: sanitize free-text note before storing — user-supplied, goes to DB and frontend
-    const safeNote = note ? stripDangerous(note).slice(0, 200) || null : null;
-
     await ReportModel.create({
       session_id,
       spot_id,
       status,
-      note: safeNote,
+      note,
       created_at: new Date(),
     });
 

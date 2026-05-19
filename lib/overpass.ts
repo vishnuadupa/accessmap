@@ -268,6 +268,9 @@ export async function queryWheelchairParking(
     fallback_used = true;
   }
 
+  const PI_OVER_180 = Math.PI / 180;
+  const cosLat = Math.cos(lat * PI_OVER_180);
+
   const spots: ParkingSpot[] = data.elements
     .filter((el) => el.tags) // skip untagged elements
     .map((el) => {
@@ -279,14 +282,14 @@ export async function queryWheelchairParking(
       const parsed = parseTag(el.tags!);
 
       // Distance from query center (Haversine approximation)
-      const dlat = ((coords.lat - lat) * Math.PI) / 180;
-      const dlon = ((coords.lon - lon) * Math.PI) / 180;
+      const dlat = (coords.lat - lat) * PI_OVER_180;
+      const dlon = (coords.lon - lon) * PI_OVER_180;
       const a =
         Math.sin(dlat / 2) ** 2 +
-        Math.cos((lat * Math.PI) / 180) *
-          Math.cos((coords.lat * Math.PI) / 180) *
+        cosLat *
+          Math.cos(coords.lat * PI_OVER_180) *
           Math.sin(dlon / 2) ** 2;
-      const distance_m = Math.round(6371000 * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a)));
+      const distance_m = Math.round(12742000 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a)));
 
       return {
         osm_id: String(el.id),
